@@ -1,0 +1,584 @@
+---
+title: "Initial QC & Filtering"
+author: "Friederike Dündar"
+date: "6/27/2019; updated `r Sys.Date()`"
+output:
+    html_document:
+        toc: true
+        toc_depth: 6
+        code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE, cache.lazy = FALSE, warning = FALSE, eval=FALSE)
+```
+
+```{r cache=FALSE, warning = FALSE, message = FALSE, eval=TRUE}
+library(data.table)
+library(magrittr)
+library(ggplot2); theme_set(theme_bw(base_size = 16))
+
+condition_cols <- c("cyan4","blue2","gray85")
+cell_pop_cols <- c("goldenrod4","gold1")
+```
+
+
+To DO:
+
+* load data onto Box --> add functions for loading the data; regenerate the plots
+* focus on samples we've actually worked with
+
+
+------------
+
+There was a total of three sequencing rounds to obtain the desired depth.
+
+> Fastq files for all 3 runs were aggregated and aligned to GRCz10.
+
+Since they sequenced multiple times, the sequencing depth is fairly high, i.e. the UMI cut-offs that
+CellRanger typically uses may not work as well. In fact, for the cells of the "all" set, 
+there seems to be a large portion of cell-free droplets that's assigned to be a cell
+(CellRanger estimates are 15K+).
+
+Originally, there were 6 samples:
+
+* whole heart: Control, 3 days and 7 days after injury
+* *tcf21*-sorted (epicardial cell enrichment): Control, 3 days and 7 days after injury
+
+## Initial QC
+
+```{r reading_in_10X_results, eval=FALSE}
+# conda activate muR --> conda environment with latest R installation
+library(scater)
+library(magrittr)
+library(Matrix)
+library(scABC2) # min.  v. 1.5.0. to provide function for reading in 10X data
+
+samples <- c("3dpa-all","3dpa-epi","7dpa-all","7dpa-epi","Ctrl-all","Ctrl-epi")
+
+data_dirs <- paste0("/scratchLocal/frd2007/2019_06_Jingli/data/CellRanger/", samples, "/outs/filtered_feature_bc_matrix/")
+names(data_dirs) <- samples
+sce <- read10XResults.abc(data_dir=data_dirs,
+                           barcode_file="barcodes.tsv.gz", genes_file = "features.tsv.gz", matrix_file = "matrix.mtx.gz",
+                           expand = TRUE, min_total_cell_counts = 0, min_mean_gene_counts=0) ##capture all the cells/genes that CR deemed worth keeping
+
+########################## Initial Filtering ###############################
+dim(sce)
+#[1] 32520 57744
+keep_gns <- rowSums(counts(sce)) >0
+table(keep_gns)
+# keep_gns
+# FALSE  TRUE 
+#  6626 25894 
+sce <- sce[keep_gns,]
+dim(sce)
+#[1] 25894 57744
+
+## add chromosome information -----------------------------------
+library(biomaRt)
+ensembl = useMart("ensembl",dataset="drerio_gene_ensembl")
+chrs <- getBM(attributes=c("ensembl_gene_id", "chromosome_name"), mart = ensembl) 
+row.names(chrs) <- chrs$ensembl_gene_id
+chrs <- chrs[rownames(sce),]
+
+rowData(sce)$chr <- paste0("chr", chrs[rownames(sce),]$chromosome_name)
+sce <- scater::calculateQCMetrics(sce,  feature_controls = list(mito = which(chrs$chromosome_name == "MT")))
+
+colData(sce)$condition <- gsub("-.*", "", sce$Sample)
+colData(sce)$cell_populations <- gsub(".*-", "", sce$Sample)
+
+##! save(sce, file = "/scratchLocal/frd2007/2019_06_Jingli/data/sce_original.rda")
+
+
+########################## PART 2 CELL FILTERING ###############################
+library(ABCutilities) # v. 0.3.0
+library(ggplot2); theme_set(theme_bw(base_size = 16))
+condition_cols <- c("cyan4","blue2","gray85")
+cell_pop_cols <- c("goldenrod4","gold1")
+
+source("/scratchLocal/frd2007/2019_06_Jingli/src/qc_plots.R")
+
+## Mito content ---------------------------------------------------------
+high.mito <- lapply(samples, function(x) isOutlier(sce[,sce$Sample == x]$pct_counts_mito, nmads = 5, type = "higher"))
+names(high.mito) <- samples
+lapply(samples, function(x) max(sce[,sce$Sample == x ][, !high.mito[[x]]]$pct_counts_mito)) %>% unlist
+#[1] 52.459016  8.198198 67.151899  6.472081 71.195652  5.575540
+
+## Number of genes per cell--------------------------------------------
+outlier.genes <- lapply(samples, function(x) isOutlier(sce[, sce$Sample == x]$total_features_by_counts, nmads = 3, type = "both"))
+names(outlier.genes) <- samples
+lapply(samples, function(x) summary( sce[, sce$Sample == x][, !outlier.genes[[x]]]$log10_total_features_by_counts))
+
+# [[1]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   1.820   2.516   2.723   2.741   2.955   3.296 
+# 
+# [[2]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   1.491   2.997   3.216   3.169   3.438   3.726 
+# 
+# [[3]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   1.908   2.565   2.765   2.782   3.025   3.302 
+# 
+# [[4]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   1.431   2.964   3.087   3.060   3.203   3.446 
+# 
+# [[5]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   1.568   2.479   2.651   2.632   2.846   3.160 
+# 
+# [[6]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   1.322   2.920   3.032   2.998   3.117   3.341 
+
+
+outlier.umi <- lapply(samples, function(x) isOutlier(sce[, sce$Sample == x]$total_counts, nmads = 3, type = "both"))
+names(outlier.umi) <- samples
+lapply(samples, function(x) summary(sce[, sce$Sample == x][, !outlier.umi[[x]]]$log10_total_counts))
+# [[1]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   2.717   3.039   3.286   3.315   3.583   4.008 
+# 
+# [[2]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   2.701   3.557   3.891   3.833   4.196   4.529 
+# 
+# [[3]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   2.829   3.173   3.425   3.443   3.712   4.065 
+# 
+# [[4]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   2.702   3.491   3.696   3.664   3.892   4.206 
+# 
+# [[5]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   2.764   3.157   3.328   3.343   3.548   3.862 
+# 
+# [[6]]
+#    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#   2.700   3.418   3.609   3.573   3.766   4.069
+
+## making plots ----------------------
+qc_params <- c("log10_total_features_by_counts", "log10_total_counts", "log10_total_counts_mito","pct_counts_mito")
+
+#pdf("qc01_countsPerCell.pdf", width = 12)
+for(i in samples){
+  lapply(qc_params, function(x){
+    print(x)
+  
+   thresh.list <- list( log10_total_features_by_counts = c(min(sce[, sce$Sample == i][,!outlier.genes[[i]]]$log10_total_features_by_counts),
+                                                           max(sce[, sce$Sample == i][,!outlier.genes[[i]]]$log10_total_features_by_counts)), ## lower and upper threshold
+                        log10_total_counts = c(min(sce[, sce$Sample == i][, !outlier.umi[[i]]]$log10_total_counts),
+                                               max(sce[, sce$Sample == i][, !outlier.umi[[i]]]$log10_total_counts)),
+                        log10_total_counts_mito = c(0,0), # dummy entries
+                        pct_counts_mito = c(0, max(sce[, sce$Sample == i][, !high.mito[[i]]]$pct_counts_mito))
+                     )
+
+  
+    P <- plot_qc_cells_violins(as.data.frame(colData(sce[, sce$Sample == i])), 
+                             x_val = "Sample",
+                             value_col = x,
+                             col_val = "condition")#,
+                             #threshold = thresh.list[[x]])
+    #P <- P+ scale_color_manual(values = condition_cols)
+    P <- P + guides(color = FALSE) + scale_color_manual(values = "black")
+    png(paste0("qc01_",i, "_", x, ".png"), height = 200)
+    print(P)
+    dev.off()
+  })
+}
+#dev.off()
+```
+
+Based on the initial QC results, it is apparent that the whole heart samples suffered from extensive cell death and contaminated droplets. 
+**We therefore focused on the *tcf21*-sorted samples from now on.**
+
+### Cell filtering
+
+Min. number of genes: `r 10^2.5` and max % mitochondrial reads: 5.
+
+```{r}
+thresh.list <- list( min_log10_total_features_by_counts = 2.5, 
+                     max_pct_counts_mito = 5)
+```
+
+```{r}
+pdf("qc01_countsPerCell.pdf", width = 12)
+
+tl <- list( log10_total_features_by_counts = c(2.5, 3.5), ## lower and upper threshold
+                        pct_counts_mito = c(0, 5))
+
+  lapply(names(tl), function(x){
+    print(x)
+    P <- plot_qc_cells_violins(as.data.frame(colData(sce[, sce$cell_populations == "epi" ])), 
+                             x_val = "condition",
+                             value_col = x,
+                             col_val = "condition",
+                             threshold = tl[[x]])
+    P <- P+ scale_color_manual(values = condition_cols)
+    #P <- P + guides(color = FALSE) + scale_color_manual(values = "black")
+    print(P)
+  })
+dev.off()
+```
+
+
+```{r}
+## focus on epicardial samples
+sce <- sce[, sce$cell_populations == "epi" ]
+dim(sce)
+#[1] 25894 16676
+
+## filter cells ---------------------------------------------------------
+qc_df <- as.data.frame(colData(sce))
+filtered <- list()
+
+keep_cells <- row.names(subset(qc_df, log10_total_features_by_counts >= thresh.list$min_log10_total_features_by_counts & pct_counts_mito <= thresh.list$max_pct_counts_mito))
+
+## keep track of those that will be removed
+filtered$cells01 <- row.names(subset(qc_df, log10_total_features_by_counts < thresh.list$min_log10_total_features_by_counts & pct_counts_mito > thresh.list$max_pct_counts_mito))
+
+if(length(keep_cells) > 0){
+  sce <- sce[,keep_cells]
+}
+dim(sce)
+#[1] 25894 15141
+
+## immediately remove no-coverage-genes --------------------------------------
+gnsfilt1 <- scABC2::filter_gene_countBased(sce.object = sce, min.rowSums = 0, return_gns= TRUE)
+filtered$genes_zero_after_cells01 <- gnsfilt1$remove_genes
+
+if(length(gnsfilt1$keep_genes) >0){
+  sce <- sce[gnsfilt1$keep_genes, ]
+}
+dim(sce)
+```
+
+### Gene Filtering
+
+```{r eval=FALSE}
+## make more sensible rownames ---------------------------
+rownames(sce) <- uniquifyFeatureNames(rowData(sce)$id, rowData(sce)$symbol)
+
+## update QC measures
+sce <- scater::calculateQCMetrics(sce,  feature_controls = list(mito = which(rowData(sce)$chr == "chrMT")))
+
+png("qc02_highestExpressedGenes.png", width = 600, height=700)
+plotHighestExprs(sce) 
+dev.off()
+
+
+hk_genes <- unique(c(grep("^mt-", rownames(sce), value=TRUE, ignore.case=TRUE),  # mitochondrial genes
+                     grep("^Rp[sl]", rownames(sce), value=TRUE, ignore.case=TRUE))) # ribosomal genes
+
+png("qc02_highestExpressedGenes_noHKGenes.png", width = 600, height=700)
+plotHighestExprs( sce[!(rownames(sce) %in% hk_genes), ] ) 
+dev.off()
+
+## calculate drop out rates ======================
+gns_dropouts <- scABC2::calc_dropouts_per_cellGroup(sce, rownames(sce), split_by = "Sample")
+##!save(gns_dropouts, file = "/scratchLocal/frd2007/2019_06_Jingli/data/gns_dropouts.rda")
+
+gns_dropouts$condition <- gsub("-.*","", gns_dropouts$Sample)
+
+P <- ggplot(data = gns_dropouts,
+       aes(x = log10(mean.pct.of.counts),
+           y = log10(pct.zeroCov_cells + .1),
+           text = paste(gene, condition, sep = "_"))) + 
+  geom_point(aes(color = condition), shape = 1, size = .5, alpha = .5) +
+  geom_point(data = gns_dropouts[gene %in% hk_genes],
+             aes(fill = condition), shape = 22, size = 4, alpha = .8) +
+  facet_grid(~condition) + ggtitle("Gene dropout rates", subtitle = "Squares = housekeeping genes") +
+  facet_wrap(~Sample) +
+  scale_color_manual(values = condition_cols) +
+  scale_fill_manual(values = condition_cols)
+
+png("qc02_gns_dropoutsPostCellFilt.png", width=1200, height = 900)
+print(P)
+dev.off()
+
+
+cutoff <- -2.5
+print(paste("Gene cutoff:", cutoff))
+
+P <- ggplot(data = gns_dropouts,
+       aes(x = log10(mean.pct.of.counts),
+           y = log10(pct.zeroCov_cells + .1),
+           text = paste(gene, condition, sep = "_"))) + 
+  geom_point(aes(color = condition), shape = 1, size = .5, alpha = .5) +
+  geom_point(data = gns_dropouts[gene %in% hk_genes],
+             aes(fill = condition), shape = 22, size = 4, alpha = .8) +
+  facet_grid(~condition) + ggtitle("Gene dropout rates -- zoomed in") +
+  coord_cartesian(ylim = c(1.9,2.01), xlim = c(-3,-1)) +
+  facet_wrap(~Sample) +
+  geom_vline(xintercept = cutoff, linetype = "dashed", color = "grey") +
+  scale_color_manual(values = condition_cols) +
+  scale_fill_manual(values = condition_cols)
+
+png("qc02_gns_dropoutsPostCellFilt_zoom.png", width=800, height = 800)
+print(P)
+dev.off()
+
+keep_genes  <- gns_dropouts[ (Sample == "3dpa-epi" & mean.pct.of.counts >= 10^-2.75) | (Sample != "3dpa-epi" & mean.pct.of.counts >= 10^-2.5)]$gene %>% unique
+
+sce.filt <- sce[keep_genes,]
+dim(sce.filt)
+#[1] 24127 15141
+
+sce.filt <- scater::calculateQCMetrics(sce.filt, feature_controls = list(mito = which(rowData(sce.filt)$chr == "chrMT")))
+
+qc_params_gns <- c("log10_mean_counts", "log10_total_counts", "pct_dropout_by_counts", "n_cells_by_counts")
+
+for(i in unique(sce.filt$Sample)){
+  sc.tmp <- sce.filt[, sce.filt$Sample == i]
+  sc.tmp <- scater::calculateQCMetrics(sc.tmp, feature_controls = list(mito = which(rowData(sc.tmp)$chr == "chrMT")))
+  qc_gns <- as.data.frame(rowData(sc.tmp))
+  
+  pl.gns <- lapply(qc_params_gns, function(x){
+    plot_qc_gns_violins(qc_gns, value_col = x,
+                        x_val = "is_feature_control") +
+                        guides(color = FALSE) + xlab("control feature") +
+      ggtitle(i)
+    })
+  
+  png(paste0("qc03_gns_distributions_postFilt_",i, ".png"), width=600, height = 800)
+  ABCutilities::MultiPlotList(pl.gns, title = paste("Gene assessments", i))
+  dev.off()
+  
+  rm(sc.tmp);  rm(qc_gns);  rm(pl.gns);  gc()
+}
+```
+
+## Excluding Tcf21-low clusters
+
+```{r eval=TRUE, cache.lazy=FALSE}
+scf <- readRDS("sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+
+gns <- as.data.frame(rowData(scf)[, 1:2])
+row.names(gns) <- rownames(scf)
+gns <-  as.data.table(gns, keep.rownames = TRUE)
+```
+```{r cache=FALSE}
+cluster_cols <- ABCutilities:::fx.get_palette_ABC("paired_pal")[1:length(unique(scf$res.03))]
+names(cluster_cols) <- levels(scf$res.03)
+
+condition_cols <- c("cyan4","blue2","gray85")
+names(condition_cols) <- as.character(unique(scf$condition))
+```
+
+```{r summary_allClusters, fig.width = 15, fig.height = 12}
+p1 <- scABC2::plot_reducedDim_from_sce(scf, which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
+                         exprs_values = "log1p_sctransform.batch",
+                         color_by = "res.03", 
+                         add_cell_info = "condition",label_by = "res.03",
+                         alpha = .3, set_colors = TRUE,
+                        size_by = .5, remove_rug = TRUE) +
+    guides(color = FALSE, fill = FALSE) +
+    ggtitle("UMAP with colors corresponding to graph-based clustering results")
+
+p2 <- scABC2::plot_reducedDim_from_sce(scf, which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
+                         exprs_values = "log1p_sctransform.batch",
+                         color_by = "tcf21", 
+                         label_by = "res.03",
+                         alpha = .3, set_colors = TRUE,
+                        size_by = .5, remove_rug = TRUE) +
+    theme(legend.position = "bottom")
+
+p3 <- make_long_dt(scf, genes = "tcf21", exprs_values = "log1p_sctransform.batch", include_metaData = c("condition","res.03")) %>% ggplot(., aes(x = res.03, y = log1p_sctransform.batch, fill = res.03)) + 
+    geom_violin(draw_quantiles = TRUE) +
+    ggbeeswarm::geom_quasirandom(size = 1, shape = 21, alpha = .7) + 
+    facet_grid(~condition) + 
+    xlab("cluster") + ylab("tcf21 expression") +
+    scale_fill_manual(values = cluster_cols) + 
+    guides(fill = FALSE) 
+
+p1 + p2 - p3 + plot_layout(ncol = 1)
+```
+
+```{r dot_plot_markers, fig.width = 10, message=FALSE, warning = FALSE}
+mks_mn <- scABC2::prep_dot_plot(scf, genes = c("tcf21",
+                                               "tpm1", "myl7", # cardiomyocytes
+                                               "mpeg1", # macrophages
+                                               "fli1a"), # endothelial cells
+                    exprs_values = "log1p_sctransform.batch", 
+                    group_by = "res.03")
+setorder(mks_mn, res.03)
+
+ggplot(mks_mn, aes(x = factor(gene, levels = c("tcf21","tpm1", "myl7", "mpeg1", "fli1a"), ordered = TRUE),
+                   y = res.03, color = mean.norm.exprs, size = pct.expressed)) +
+  geom_point() +
+  scale_color_gradient(low = "grey85", high = "red3") +
+  ylab("cell cluster") + xlab("genes (Epicardial cells | CM/SMC | M0 | Endothelial)")+
+  theme(legend.position = "bottom") +
+  ggtitle("Selected marker gene expression patterns across the cells of different clusters")
+```
+
+* Based on the expression of these and other marker genes,  we assume that:
+    - cluster 6 = smooth muscle cells
+    - cluster 10 = cardiomyocytes
+    - cluster 8 = macrophages
+    - cluster 11 = endothelial cells
+    
+To focus on cells of the epicardium, we're going to exclude these clusters.
+
+## Reprocessing data after cluster removal
+
+```{r removing_clusters_and_reprocess, eval=FALSE}
+scf <- scf[, !(as.character(scf$res.03) %in% c("6","8","10","11"))]
+scf <- calculateQCMetrics(scf)
+
+## remove genes with fewer more than 99.85% dropouts (approx. 5 cells per condition must
+## express a given gene
+gns_drps <-  scABC2::calc_dropouts_per_cellGroup(scf, rownames(scf), split_by = "Sample")
+keep_gns <- unique(gns_drps[pct.zeroCov_cells <= 99.85]$gene)
+scf <- scf[keep_gns,]
+
+## re-do clustering ===========================================
+srt <- CreateSeuratObject(counts = counts(scf), 
+                          project = "Epi_clusterRemove", assay = "RNA",
+                          min.cells = 0, min.features = 0,
+                          names.field = 1, 
+                          meta.data = as.data.frame(colData(scf)[, c("Sample","condition")])
+                          )
+
+srt <- SCTransform(srt, new.assay.name = "scTrans_batch_ClustRemove", batch_var = 'condition')
+
+srt <- RunPCA(object = srt, features = VariableFeatures(object = srt), do.print = FALSE)
+png("elbow_plot_scTransformBatchClustRemove.png")
+ElbowPlot(object = srt) # -->  to determine the # of dims for tSNE
+dev.off()
+
+png("pca_dimLoadings_scTransformBatchClustRemove.png", height = 1900, width = 1500)
+VizDimLoadings(srt, dims = 1:20, reduction = "pca")
+dev.off()
+
+png("pca_dimPlot_scTransformBatchClustRemove.png", height = 1500, width = 1500)
+DimPlot(srt, reduction = "pca",  group.by = "orig.ident")
+dev.off()
+
+png("pca_dimHeatmaps_scTransformBatchClustRemove.png", height = 1500, width = 800)
+DimHeatmap(srt, dims = 1:20,  balanced = TRUE) #equal number of genes with both + and - scores
+dev.off()
+
+srt <- RunUMAP(object = srt, 
+               reduction = "pca",
+               dims = 1:20,# check the elbow plot
+               n.neighbors = 30L,
+               metric = "correlation")
+
+srt <- FindNeighbors(srt, dims = 1:20) #construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods (Jaccard similarity)
+srt <- FindClusters(srt, resolution = .8) #Louvain algorithm 
+markers_srt.08 <- FindAllMarkers(srt)
+
+srt <- FindClusters(srt, resolution = .3) #Louvain algorithm 
+markers_srt.03 <- FindAllMarkers(srt)
+
+
+saveRDS(srt, file = "seurat_scTransformBatchCorrectedClustersRemoved.rds")
+```
+
+```{r regenerating_scf_object, eval=FALSE}
+cd_srt <-  srt@meta.data
+scf$clusters.03 <- cd_srt[colnames(scf),]$scTrans_batch_ClustRemove_snn_res.0.3
+scf$clusters.08 <- cd_srt[colnames(scf),]$scTrans_batch_ClustRemove_snn_res.0.8
+
+### reduced dimensions
+reducedDim(scf, "pca_scTransformBatch") <- Embeddings(object = srt, reduction = "pca")[colnames(scf),]
+reducedDim(scf, "umap_scTransformBatch") <- Embeddings(object = srt, reduction = "umap")[colnames(scf),]
+
+### normalized data
+rnms <- data.table(ori = row.names(scf)) # get original rownames -- Seurat replaces underscores with hyphens...
+rnms[,seurat := gsub("_","-", ori)]
+
+## the default setting of sctransform::vst is to remove genes expressed in fewer than 5 cells,
+## therefore I need to adjust the data set
+normd <- as.data.table(as.matrix(GetAssayData(object = srt)), keep.rownames = TRUE) # log1p(corrected counts, i.e. Pearson residuals)
+setnames(normd, "rn", "seurat")
+normd <- rnms[normd, on = "seurat"]
+dim(scf)
+#[1] 17443 14051
+scf <- scf[normd$ori, ] ## filtering!
+dim(scf)
+#[1] 17443 14051
+
+normd.m <- as.matrix(normd[, -c("seurat", "ori"), with=FALSE])
+rownames(normd.m) <- normd$ori
+normd.m <- normd.m[rownames(scf), colnames(scf)]
+assay(scf, "log1p_sctransform.batch") <- normd.m
+
+saveRDS(scf, file = "sce_CellGeneFiltWithScTransformBatchCorrect_ClustRemoved_2019-07.rds")
+```
+
+
+# Session info
+
+```
+R version 3.5.1 (2018-07-02)
+Platform: x86_64-conda_cos6-linux-gnu (64-bit)
+Running under: Red Hat Enterprise Linux Server release 6.3 (Santiago)
+
+Matrix products: default
+BLAS/LAPACK: /pbtech_mounts/homes022/frd2007/miniconda3/envs/muR/lib/R/lib/libRblas.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] Seurat_3.1.0                Matrix_1.2-17              
+ [3] magrittr_1.5                scater_1.10.1              
+ [5] ggplot2_3.2.1               SingleCellExperiment_1.4.1 
+ [7] SummarizedExperiment_1.12.0 DelayedArray_0.8.0         
+ [9] BiocParallel_1.16.6         matrixStats_0.54.0         
+[11] Biobase_2.42.0              GenomicRanges_1.34.0       
+[13] GenomeInfoDb_1.18.2         IRanges_2.16.0             
+[15] S4Vectors_0.20.1            BiocGenerics_0.28.0        
+
+loaded via a namespace (and not attached):
+ [1] tsne_0.1-3               nlme_3.1-141             bitops_1.0-6            
+ [4] httr_1.4.1               RcppAnnoy_0.0.12         RColorBrewer_1.1-2      
+ [7] sctransform_0.2.0        tools_3.5.1              R6_2.4.0                
+[10] irlba_2.3.3              KernSmooth_2.23-15       HDF5Array_1.10.1        
+[13] vipor_0.4.5              uwot_0.1.3               lazyeval_0.2.2          
+[16] colorspace_1.4-1         npsurv_0.4-0             withr_2.1.2             
+[19] tidyselect_0.2.5         gridExtra_2.3            compiler_3.5.1          
+[22] plotly_4.9.0             caTools_1.17.1.2         scales_1.0.0            
+[25] lmtest_0.9-37            pbapply_1.4-2            ggridges_0.5.1          
+[28] stringr_1.4.0            digest_0.6.19            R.utils_2.9.0           
+[31] XVector_0.22.0           htmltools_0.3.6          pkgconfig_2.0.2         
+[34] bibtex_0.4.2             htmlwidgets_1.3          rlang_0.4.0             
+[37] DelayedMatrixStats_1.4.0 zoo_1.8-6                jsonlite_1.6            
+[40] ica_1.0-2                gtools_3.8.1             dplyr_0.8.3             
+[43] R.oo_1.22.0              RCurl_1.95-4.12          GenomeInfoDbData_1.2.0  
+[46] Rcpp_1.0.1               ggbeeswarm_0.6.0         munsell_0.5.0           
+[49] Rhdf5lib_1.6.0           ape_5.3                  reticulate_1.13         
+[52] viridis_0.5.1            R.methodsS3_1.7.1        stringi_1.4.3           
+[55] gbRd_0.4-11              MASS_7.3-51.4            zlibbioc_1.28.0         
+[58] rhdf5_2.28.0             gplots_3.0.1.1           Rtsne_0.15              
+[61] plyr_1.8.4               grid_3.5.1               gdata_2.18.0            
+[64] listenv_0.7.0            ggrepel_0.8.1            crayon_1.3.4            
+[67] lattice_0.20-38          cowplot_1.0.0            splines_3.5.1           
+[70] SDMTools_1.1-221.1       pillar_1.4.2             igraph_1.2.4.1          
+[73] future.apply_1.3.0       reshape2_1.4.3           codetools_0.2-16        
+[76] leiden_0.3.1             glue_1.3.1               lsei_1.2-0              
+[79] metap_1.1                RcppParallel_4.4.3       data.table_1.12.2       
+[82] png_0.1-7                Rdpack_0.11-0            tidyr_0.8.3             
+[85] gtable_0.3.0             RANN_2.6.1               purrr_0.3.2             
+[88] future_1.14.0            assertthat_0.2.1         rsvd_1.0.2              
+[91] survival_2.44-1.1        viridisLite_0.3.0        tibble_2.1.3            
+[94] beeswarm_0.2.3           cluster_2.1.0            globals_0.12.4          
+[97] fitdistrplus_1.0-14      ROCR_1.0-7  
+```
