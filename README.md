@@ -1,20 +1,25 @@
-# Cao_Epicardium
-Scripts related to scRNA-seq data analysis 
+# scRNA-seq of epicardial cells during zebrafish heart regeneration
 
 The Applied Bioinformatics Core analyzed single-cell RNA sequencing data generated from epicardial cells of zebrafish models of cardiac injury.
 The main goal was to understand whether different sub-populations of epicardial cells contribute to specific aspects of myocardial regeneration.
 
 The raw reads were aligned and processed with the CellRanger pipeline (v. 3.0.2) using the zebrafish transcriptome version GRCz10.
-Subsequent analyses were performed in R following the recommendations of \citet{Amezquita2019} (\url{https://osca.bioconductor.org/}) using numerous functions provided in the R packages \texttt{scater} and \texttt{scran} \citep{McCarthy2017,scran} as well as \texttt{Seurat} following the tutorials of the Satija Lab (\url{https://satijalab.org/seurat/}).
+Subsequent analyses were performed in R following the recommendations of [Amezquita et al., 2019](https://osca.bioconductor.org/), using numerous functions provided in the R packages scater and scran.
 
-Cells were required to have a minimum of 10e2.5 genes and max. 5% mitochondrial reads
-Genes were removed if they were detected in either fewer than 0.2% of the cells or in fewer than 5cells per sample.
+The analyses were also performed at a time when Seurat's scTransform method was en vogue.
+For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were followed.
+The PI of the project insisted on monocle as the method of choice for trajectory and pseudotime analyses, hence `monocle3` was used relatively close to its publication date.
 
-Read counts were ormalized using `SCTransform` as implemented in `Seurat~v.3.1` correcting for batch effects between the samples.
+## Filtering
+
+Following CellRanger's generation of read count matrices, cells were required to have a minimum of 10e2.5 genes and max. 5% mitochondrial reads.
+Genes were removed if they were detected in either fewer than 0.2% of the cells or in fewer than 5 cells per sample.
+
+Read counts were normalized using `SCTransform` as implemented in `Seurat~v.3.1` correcting for batch effects between the samples.
 For visualizations and additional downstream analyses, the SCTransform-normalized (log-transformed) expression values were used unless noted otherwise.
 
 For identifying clusters of cells with similar global transcriptomes, a shared nearest neighbor graph was constructed using `Seurat's` `FindNeighbors()` function with default settings (e.g. k = 20) and using the first 20 principal components following PCA.
-Clusters were identified with `Seurat`'s `FindClusters()` function with the resolution parameter set to 0.3 .
+Clusters were identified with `Seurat`'s `FindClusters()` function with the resolution parameter set to 0.3.
 In addition, UMAP coordinates were calculated.
 We assessed the identity of the cells within the resulting clusters using marker genes detected by `Seurat`'s `FindAllMarkers()` function with default settings as well as marker genes identified by `SC3` . 
 Clusters with relatively low levels of *tcf21* and high levels of marker genes that indicate non-epicardial cell identities (e.g. immune cells with high levels of *cd74a* and mpeg* were removed from subsequent analyses.
@@ -23,19 +28,23 @@ After excluding the cells that belonged to the above mentioned clusters, we re-d
 
 ## Marker gene detection
 
-We used two complementary approaches to identify genes that may be representative of a given cell cluster: Seurat's \texttt{FindAllMarkers} approach and the method implemented in \texttt{SC3} \citep{Kiselev2017}.
+We used two complementary approaches to identify genes that may be representative of a given cell cluster: Seurat's `FindAllMarkers()` approach and the method implemented in `SC3` (Kiselev2017).
 To determine the most robust candidate genes, we compared the results of both methods, using an adjusted p-value cutoff of 1\% and minimum log fold change of 0.8 for Seurat markers as well as a minimum AUROC value for SC3 markers of 0.7.
 
 ## Trajectory Inference
 
-To infer the developmental order of certain subpopulations, particularly within the regenerating samples (d3, d7), we applied two different trajectory reconstruction algorithms: \texttt{Monocle~3} and \texttt{slingshot} \citep{monocle3,slingshot}.
-Trajectory reconstruction methods typically need to achieve two key functions: (i)~identification of the number and relationships of lineages (cells of similar transcription states), and (ii)~calculation of a pseudotime measure that represents each cell's position along the trajectory in relationship to the terminal lineage.
+To infer the developmental order of certain subpopulations, particularly within the regenerating samples (d3, d7), we applied `Monocle3`. 
+Trajectory reconstruction methods typically need to achieve two key functions:
 
-We generally followed the instructions of the Trapnell Lab for applying the latest installment of the Monocle suite (\url{https://cole-trapnell-lab.github.io/monocle3/monocle3_docs/}).
+1. identification of the number and relationships of lineages (cells of similar transcription states), and 
+2. calculation of a pseudotime measure that represents each cell's position along the trajectory in relationship to the terminal lineage.
+
+We generally followed the instructions of the Trapnell Lab for applying the latest installment of the Monocle suite (<https://cole-trapnell-lab.github.io/monocle3/monocle3_docs/>). 
 In brief, we converted the read counts into a monocle object, and re-processed the data using \texttt{preprocess\_cds()} with the number of dimensions set to 100.
 Cells were clustered with \texttt{cluster\_cells()}, which relies on Louvain community detection similar to Seurat, but using the UMAP dimensions.
 To identify the trajectories of individual cells through the UMAP space, \texttt{learn\_graph()} was used.
 To determine pseudotime values, root nodes were identified for each partition (as determined in the previous step) and pseudotime values were calculated based on each cell's projection on the principal graph.
+
 
 ## GO Term Overrepresentation
 
@@ -46,7 +55,11 @@ Visualizations of gene set enrichments were done with the help of the \texttt{do
 
 # References
 
-* Hafemeister2019
-* Kiselev2017
-* Waltman2013
-* UMAP2019
+* Amezquita, Robert, Lun, Aaron, Hicks, Stephanie, and Gottardo, Raphael (version 1.0.6). "Orchestrating Single-Cell Analysis with Bioconductor". <https://bioconductor.org/books/release/OSCA/>. Nat Methods. 2020 Feb;17(2):137-145. doi: 10.1038/s41592-019-0654-x. PMID: 31792435.
+* **scater**: McCarthy DJ, Campbell KR, Lun ATL, Willis QF (2017). "Scater: pre-processing, quality control, normalisation and
+visualisation of single-cell RNA-seq data in R." _Bioinformatics_, *33*, 1179-1186. <https://doi.org/10.1093/bioinformatics/btw777>.
+* **scran**: L. Lun, A. T., Bach, K., & Marioni, J. C. (2016). Pooling across cells to normalize single-cell RNA sequencing data with many zero counts. Genome Biology, 17(1), 75. <https://doi.org/10.1186/s13059-016-0947-7>
+* **scTransform**: Hafemeister, C., & Satija, R. (2019). Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biology, 20(1), 1–15. <https://doi.org/10.1186/s13059-019-1874-1>
+* **SC3** Kiselev, V. Y., Kirschner, K., Schaub, M. T., Andrews, T., Yiu, A., Chandra, T., … Hemberg, M. (2017). SC3: Consensus clustering of single-cell RNA-seq data. Nature Methods, 14(5), 483–486. <https://doi.org/10.1038/nmeth.4236Kiselev2017>
+* monocle3
+* **clusterProfiler**: Yu, G., Wang, L. G., Han, Y., & He, Q. Y. (2012). ClusterProfiler: An R package for comparing biological themes among gene clusters. OMICS A Journal of Integrative Biology, 5(16), 284–287. <https://doi.org/10.1089/omi.2011.0118>
