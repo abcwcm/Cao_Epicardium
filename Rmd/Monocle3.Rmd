@@ -42,7 +42,7 @@ devtools::load_all("monocle3")
 
 ```{r monocle_prep_3dpa_epiClustersOnly, eval=FALSE}
 ## ADD LOAD FROM BOX
-sce <- readRDS("/scratchLocal/frd2007/2019_06_Jingli/2019-07_3dpa_only/sce_3dpa_ScTransform_ClustRemoved_2019-07.rds")
+sce <- readRDS("sce_3dpa_ScTransform_ClustRemoved_2019-07.rds")
 cd <- colData(sce)[, c("Sample", "ori_barcodes", "cell_names", "condition", "clusters_d3.03", "res.01")]  
 rd <- rowData(sce)[, c("id","symbol")]
 rd$gene_short_name <- rd$symbol
@@ -208,7 +208,7 @@ library(data.table)
 library(scater)
 library(ggplot2) ; theme_set(theme_bw(base_size = 16))
 
-scf <- readRDS(file = "~/Documents/Projects/done/2019-06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_ClustRemoved_2019-07.rds")
+scf <- readRDS(file = "sce_CellGeneFiltWithScTransformBatchCorrect_ClustRemoved_2019-07.rds")
 
 cd_old <- colData(scf)[, c("Sample","cell_names","clusters.03")] %>% as.data.frame %>% as.data.table
 ## add our customized labels
