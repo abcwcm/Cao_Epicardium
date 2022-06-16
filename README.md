@@ -15,7 +15,7 @@ The PI of the project insisted on monocle as the method of choice for trajectory
 Following CellRanger's generation of read count matrices, cells were required to have a minimum of 10e2.5 genes and max. 5% mitochondrial reads.
 Genes were removed if they were detected in either fewer than 0.2% of the cells or in fewer than 5 cells per sample.
 
-Read counts were normalized using `SCTransform` as implemented in `Seurat~v.3.1` correcting for batch effects between the samples.
+Read counts were normalized using `SCTransform` as implemented in `Seurat v.3.1` correcting for batch effects between the samples.
 For visualizations and additional downstream analyses, the SCTransform-normalized (log-transformed) expression values were used unless noted otherwise.
 
 For identifying clusters of cells with similar global transcriptomes, a shared nearest neighbor graph was constructed using `Seurat's` `FindNeighbors()` function with default settings (e.g. k = 20) and using the first 20 principal components following PCA.
@@ -40,18 +40,18 @@ Trajectory reconstruction methods typically need to achieve two key functions:
 2. calculation of a pseudotime measure that represents each cell's position along the trajectory in relationship to the terminal lineage.
 
 We generally followed the instructions of the Trapnell Lab for applying the latest installment of the Monocle suite (<https://cole-trapnell-lab.github.io/monocle3/monocle3_docs/>). 
-In brief, we converted the read counts into a monocle object, and re-processed the data using \texttt{preprocess\_cds()} with the number of dimensions set to 100.
-Cells were clustered with \texttt{cluster\_cells()}, which relies on Louvain community detection similar to Seurat, but using the UMAP dimensions.
-To identify the trajectories of individual cells through the UMAP space, \texttt{learn\_graph()} was used.
+In brief, we converted the read counts into a monocle object, and re-processed the data using `preprocess_cds()` with the number of dimensions set to 100.
+Cells were clustered with `cluster\_cells()`, which relies on Louvain community detection similar to Seurat, but using the UMAP dimensions.
+To identify the trajectories of individual cells through the UMAP space, `learn_graph()` was used.
 To determine pseudotime values, root nodes were identified for each partition (as determined in the previous step) and pseudotime values were calculated based on each cell's projection on the principal graph.
 
 
 ## GO Term Overrepresentation
 
-To identify functionally meaningful gene sets that are over-represented among gene lists of interest, we used the enrichment tests implemented in the functions \texttt{enrichKegg}, \texttt{enrichPathway} and \texttt{enrichGO} of the R packages \texttt{clusterProfiler} and \texttt{ReactomePA} \citep{clusterprofiler,reactomePA}.
-We tested different gene lists: (i)~marker genes determined by \texttt{Seurat} (logFC \textgreater 0 and adjusted p-value \textless 0.05) for each cluster, and (ii)~genes associated with temporal expression along the pseudotime trajectory determined by \texttt{Monocle~3} (q-value \textless 0.05 and Morans I statistic \textgreater 0.4).
+To identify functionally meaningful gene sets that are over-represented among gene lists of interest, we used the enrichment tests implemented in the functions `enrichKegg()`, `enrichPathway()` and `enrichGO()` of the R packages `clusterProfiler` and `ReactomePA`.
+We tested different gene lists: (i)~marker genes determined by `Seurat` (logFC > 0 and adjusted p-value < 0.05) for each cluster, and (ii)~genes associated with temporal expression along the pseudotime trajectory determined by `Monocle~3` (q-value < 0.05 and Morans I statistic > 0.4).
 
-Visualizations of gene set enrichments were done with the help of the \texttt{dotplot}, \texttt{cnetplot} and \texttt{heatplot} functions of the \texttt{clusterProfiler} package \citep{clusterprofiler}.
+Visualizations of gene set enrichments were done with the help of the `dotplot()`, `cnetplot()` and `heatplot()` functions of the `clusterProfiler()` package.
 
 # References
 
