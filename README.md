@@ -8,7 +8,7 @@ Subsequent analyses were performed in R following the recommendations of [Amezqu
 
 The analyses were also performed at a time when Seurat's scTransform method was en vogue.
 For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were followed.
-The PI of the project insisted on monocle as the method of choice for trajectory and pseudotime analyses, hence `monocle3` was used relatively close to its publication date.
+`monocle3` was used for pseudotime and trajectory analyses.
 
 ## Filtering
 
@@ -33,7 +33,7 @@ To determine the most robust candidate genes, we compared the results of both me
 
 ## Trajectory Inference
 
-To infer the developmental order of certain subpopulations, particularly within the regenerating samples (d3, d7), we applied `Monocle3`. 
+To infer the developmental order of certain subpopulations, particularly within the regenerating samples (d3, d7), we applied `monocle3`. 
 Trajectory reconstruction methods typically need to achieve two key functions:
 
 1. identification of the number and relationships of lineages (cells of similar transcription states), and 
@@ -63,3 +63,4 @@ visualisation of single-cell RNA-seq data in R." _Bioinformatics_, *33*, 1179-11
 * **SC3** Kiselev, V. Y., Kirschner, K., Schaub, M. T., Andrews, T., Yiu, A., Chandra, T., … Hemberg, M. (2017). SC3: Consensus clustering of single-cell RNA-seq data. Nature Methods, 14(5), 483–486. <https://doi.org/10.1038/nmeth.4236Kiselev2017>
 * monocle3
 * **clusterProfiler**: Yu, G., Wang, L. G., Han, Y., & He, Q. Y. (2012). ClusterProfiler: An R package for comparing biological themes among gene clusters. OMICS A Journal of Integrative Biology, 5(16), 284–287. <https://doi.org/10.1089/omi.2011.0118>
+* `monocle3`: Doesn't have its own publication yet, but see [here](https://cole-trapnell-lab.github.io/monocle3/papers/) for manuscripts related to previous versions of monocle.
