@@ -3,10 +3,10 @@
 The Applied Bioinformatics Core analyzed single-cell RNA sequencing data generated from epicardial cells of zebrafish models of cardiac injury.
 The main goal was to understand whether different sub-populations of epicardial cells contribute to specific aspects of myocardial regeneration.
 
-The raw reads were aligned and processed with the CellRanger pipeline (v. 3.0.2) using the zebrafish transcriptome version GRCz10.
-Subsequent analyses were performed in R following the recommendations of [Amezquita et al., 2019](https://osca.bioconductor.org/), using numerous functions provided in the R packages scater and scran.
+The raw reads were aligned and processed with the `CellRanger` pipeline (v. 3.0.2) using the zebrafish transcriptome version GRCz10.
+Subsequent analyses were performed in R following the recommendations of [Amezquita et al., 2019](https://osca.bioconductor.org/), using numerous functions provided in the R packages `scater` and `scran`.
 
-The analyses were also performed at a time when Seurat's scTransform method was en vogue.
+The analyses were also performed at a time when Seurat's `scTransform` method was en vogue.
 For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were followed.
 `monocle3` was used for pseudotime and trajectory analyses.
 
@@ -63,4 +63,4 @@ visualisation of single-cell RNA-seq data in R." _Bioinformatics_, *33*, 1179-11
 * **SC3** Kiselev, V. Y., Kirschner, K., Schaub, M. T., Andrews, T., Yiu, A., Chandra, T., … Hemberg, M. (2017). SC3: Consensus clustering of single-cell RNA-seq data. Nature Methods, 14(5), 483–486. <https://doi.org/10.1038/nmeth.4236Kiselev2017>
 * monocle3
 * **clusterProfiler**: Yu, G., Wang, L. G., Han, Y., & He, Q. Y. (2012). ClusterProfiler: An R package for comparing biological themes among gene clusters. OMICS A Journal of Integrative Biology, 5(16), 284–287. <https://doi.org/10.1089/omi.2011.0118>
-* `monocle3`: Doesn't have its own publication yet, but see [here](https://cole-trapnell-lab.github.io/monocle3/papers/) for manuscripts related to previous versions of monocle.
+* **monocle3**: Doesn't have its own publication yet, but see [here](https://cole-trapnell-lab.github.io/monocle3/papers/) for manuscripts related to previous versions of monocle.
