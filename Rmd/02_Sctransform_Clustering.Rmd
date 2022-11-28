@@ -20,7 +20,7 @@ library(scater)
 library(Seurat) # v. 3.1.0.
 library(sctransform) # sctransform_0.2.0
 
-load(file = "/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFilt_2019-06.rda")
+load(file = "data/sce_CellGeneFilt_2019-06.rda")
 ```
 
 ```{r seurat_processing, eval=FALSE}
@@ -87,7 +87,7 @@ srt <- FindNeighbors(srt, dims = 1:15) #construct a KNN graph based on the eucli
 srt <- FindClusters(srt, resolution = .8) #Louvain algorithm 
 srt <- FindClusters(srt, resolution = .3) #Louvain algorithm 
 
-##!save(srt, file = "/scratchLocal/frd2007/2019_06_Jingli/data/seurat_scTransform.rda")
+##!save(srt, file = "data/seurat_scTransform.rda")
 
 #markers_seurClsts <- FindAllMarkers(srt)
 #save(markers_seurClsts, file = "/athena/abc/scratch/frd2007/2019-05_MikeNotaras/data/markers_seurat_scTransform_June21.rda")
@@ -147,9 +147,9 @@ srt.batch <- FindClusters(srt.batch, resolution = .3) #Louvain algorithm
 markers_srt.batch.03 <- FindAllMarkers(srt.batch)
 
 
-save(srt.batch, file = "/scratchLocal/frd2007/2019_06_Jingli/data/seurat_scTransformBatchCorrected.rda")
+save(srt.batch, file = "data/seurat_scTransformBatchCorrected.rda")
 
-save(markers_srt.batch.03, file = "/scratchLocal/frd2007/2019_06_Jingli/data/markers_seurat_res03.rda")
+save(markers_srt.batch.03, file = "data/markers_seurat_res03.rda")
 ```
 
 
@@ -185,7 +185,7 @@ rownames(normd.m) <- normd$ori
 normd.m <- normd.m[rownames(sce.filt), colnames(sce.filt)]
 assay(sce.filt, "log1p_sctransform.batch") <- normd.m
 
-saveRDS(sce.filt, file = "/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+saveRDS(sce.filt, file = "data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
 
 rm(normd)
 gc()
@@ -202,11 +202,11 @@ Using the clustering from Seurat (resolution: 0.3)
 markers_sc3.batch_res03 <- SC3::get_marker_genes( assay(sce.filt, "log1p_sctransform.batch"),
                                                   as.numeric(sce.filt$res.03))
 row.names(markers_sc3.batch_res03) <- rownames(sce.filt)
-save(markers_sc3.batch_res03, file = "/scratchLocal/frd2007/2019_06_Jingli/data/markers_SC3_2019-07.rda")
+save(markers_sc3.batch_res03, file = "data/markers_SC3_2019-07.rda")
 ```
 
 ```{r}
-load("/Users/frd2007/Documents/Projects/2019-06_Jingli/data/markers_SC3_2019-07.rda") # markers_sc3.batch_res03
+load("data/markers_SC3_2019-07.rda") # markers_sc3.batch_res03
 
 markers_sc3.batch_res03 <- subset(markers_sc3.batch_res03, !is.na(auroc))
 markers_sc3.batch_res03$clusts <- factor(markers_sc3.batch_res03$clusts - 1, levels = levels(scf$res.03), ordered = TRUE)

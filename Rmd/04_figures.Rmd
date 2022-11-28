@@ -14,9 +14,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, dev=c('png','pdf','png'), 
-    fig.path = "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/2021-10_Manuscript/",
-    cache=TRUE, cache.lazy = FALSE)
+knitr::opts_chunk$set(echo = FALSE, cache=TRUE, cache.lazy = FALSE)
 ```
 ```{r include=FALSE, cache=FALSE, message=FALSE}
 #library(scater)

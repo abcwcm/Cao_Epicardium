@@ -24,13 +24,6 @@ condition_cols <- c("cyan4","blue2","gray85")
 cell_pop_cols <- c("goldenrod4","gold1")
 ```
 
-
-To DO:
-
-* load data onto Box --> add functions for loading the data; regenerate the plots
-
-------------
-
 There was a total of three sequencing rounds to obtain the desired depth.
 
 > Fastq files for all 3 runs were aggregated and aligned to GRCz10.
@@ -363,7 +356,7 @@ Platform: x86_64-conda_cos6-linux-gnu (64-bit)
 Running under: Red Hat Enterprise Linux Server release 6.3 (Santiago)
 
 Matrix products: default
-BLAS/LAPACK: /pbtech_mounts/homes022/frd2007/miniconda3/envs/muR/lib/R/lib/libRblas.so
+BLAS/LAPACK: /miniconda3/envs/muR/lib/R/lib/libRblas.so
 
 locale:
  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              

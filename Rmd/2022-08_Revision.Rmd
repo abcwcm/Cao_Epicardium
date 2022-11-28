@@ -1,0 +1,541 @@
+---
+title: "Plots for Revision"
+author: "Friederike Dündar"
+date: "08/08/2021; updated `r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    code_folding: hide
+  pdf_document:
+    toc: yes
+    toc_depth: 5
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, dev=c('png','pdf','png'), 
+    fig.path = "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/2021-10_Manuscript/",
+    cache=TRUE, cache.lazy = FALSE)
+```
+```{r include=FALSE, cache=FALSE, message=FALSE}
+#library(scater)
+library(SingleCellExperiment)
+library(data.table)
+library(magrittr)
+library(ggplot2) ; theme_set(theme_bw(base_size = 16))
+library(patchwork)
+library(scABC2)
+suppressMessages(library(clusterProfiler))
+```
+
+
+# Updated marker gene plot with *all* cells
+
+Not just Tcf21-hi
+
+```{r}
+## all cells
+sce <- readRDS("sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+sce$clusters <- factor(sce$res.03, levels = c(0:11), ordered = TRUE)
+
+cluster_cols <- ABCutilities:::fx.get_palette_ABC("paired_pal")[1:length(unique(sce$res.03))]
+names(cluster_cols) <- levels(sce$res.03)
+
+condition_cols <- c("cyan4","blue2","gray85")
+names(condition_cols) <- as.character(unique(sce$condition))
+```
+
+```{r rev_allClusters_dot_plot_selected_markers, fig.height = 9.5, message=FALSE, warning = FALSE}
+gns2 <-  c("tcf21", "gata5", "wt1b", "tbx18", "sema3d", "aldh1a2", "tgm2b", "fn1a",
+    "serpinh1a", "serpinh1b", "col11a1a", "col12a1b", "ptx3a", "marcksb",
+    ## additional genes:
+    "atp5mc1", "hmgb2a", "hmgb2b", "psmb1","hsp90b1","calr3b","loxa",
+    "hapln1a", "vegfaa", "clu", "cxcl12a", "col18a1a", "top2a", "pcna",
+    "pdgfrb", "myh11a", "notch3", "tpm1", "acta2", "myl7", "tnnt2a",
+    "mb", "kdrl", "fli1a", "mpeg1.1", "cd74a")
+mks_mn2 <- scABC2::prep_dot_plot(sce,
+    genes = gns2, exprs_values = "log1p_sctransform.batch",
+    group_by = "res.03")
+setorder(mks_mn2, res.03)
+
+ggplot(mks_mn2, aes(x = factor(gene, levels = gns2, ordered = TRUE),
+    y = res.03, color = mean.norm.exprs, size = pct.expressed)) +
+    geom_point() + coord_flip() +
+    scale_color_gradient(low = "grey95", high = "red3", 
+      limits = c(0, max(mks_mn2$mean.norm.exprs))) +
+    ylab("cluster") + 
+    #ggtitle("marker genes of epicardial, CM/SMC, endothelial and blood cells")+
+    xlab("")
+```
+
+# Changing label format for UMAPs of all cells
+
+More recent versions of the `scABC2` package than the one used for the shiny app have the labels appear set against a white label background
+
+## Fig a
+
+```{r rev_umap_allCells_condition, fig.height = 7, fig.width = 9.5}
+scABC2::plot_reducedDim_from_sce(sce,
+    which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
+    exprs_values = "log1p_sctransform.batch",
+    color_by = "condition", 
+    label_by = "res.03", label_size = 4, alpha = .3,
+    set_colors = TRUE,
+    size_by = .5, remove_rug = TRUE) #+
+    #guides(color = FALSE, fill = FALSE) +
+    #ggtitle("UMAP with colors corresponding to graph-based clustering results")
+```
+
+
+## Fig c
+
+```{r rev_umap_allCells_clusters, fig.height = 7, fig.width = 8}
+scABC2::plot_reducedDim_from_sce(sce.object = sce, which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
+    exprs_values = "log1p_sctransform.batch",
+    color_by = "res.03", 
+    add_cell_info = "condition",label_by = "res.03",
+    label_size = 4,
+    alpha = .3, set_colors = TRUE,
+    size_by = .5, remove_rug = TRUE) +
+    theme(legend.position = "bottom") 
+```
+
+## Fig e
+
+```{r rev_umap_allCells_clusters_per_condition, fig.width = 21, fig.height = 9}
+scABC2::plot_reducedDim_from_sce(sce,
+    which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
+    exprs_values = "log1p_sctransform.batch",
+    color_by = "res.03", 
+    add_cell_info = "condition",
+    label_by = "res.03", label_size = 4,
+    alpha = .3, set_colors = TRUE,
+    size_by = .5, remove_rug = TRUE) +
+    theme(legend.position = "bottom") +
+    facet_wrap(~condition)
+```
+
+# aEPC markers in published data sets
+
+>ptx3a, col12a1b, marcksb, atp5mc1, hmgb2a, hmgb2b, psmb1, hsp90b1, calr3b, serpinh1b, loxa
+
+```{r}
+gns_aepc <- c("ptx3a", "col12a1b", "marcksb", "atp5mc1", "hmgb2a",
+    "hmgb2b", "psmb1", "hsp90b1", "calr3b", "serpinh1b", "loxa")
+```
+
+## Mouse development: Xiao et al. 
+
+```{r load_xiaoSCE}
+scxiao <- readRDS(file = "~/Documents/Projects/done/2019-06_Jingli/data/sce_Xiao2018_WTcells.rds")
+```
+
+Adding zebrafish/mouse homologue genes
+
+```{r load_gene_info}
+genes <- readRDS(file = "~/Documents/Projects/done/2019-06_Jingli/data/genes_mm_zf_mapping_dt.rds")
+genes <- genes[ ZFIN.symbol %in% rownames(sce) & 
+        MGI.symbol %in% rownames(scxiao)]
+```
+```{r}
+rdm <- DataFrame(
+    row.names = genes$MGI.symbol,
+    gene.mm = genes$MGI.symbol, 
+    gene.zf = genes$ZFIN.symbol)
+scxiao <- scxiao[rownames(scxiao) %in% unique(genes$MGI.symbol), ]
+rowData(scxiao) <- rdm[rownames(scxiao),]
+rownames(scxiao) <- rowData(scxiao)$gene.zf
+```
+
+When we originally integrated the data, we focused on 3 clusters:
+
+```
+sl$mouse <- scxiao[genes$MGI.symbol , scxiao$Cluster %in% c("Epi","FBs","Mutant EPDCs")]
+```
+
+There are two samples: `r table(scxiao$orig.ident)`
+
+Since we don't have the redDims for the mouse data alone, may as well use the coordinates from the integration with the fish.
+Here I'm loading the results where we used all cell types contained within the Xiao data set, which entails `r sort(unique(scxiao$Cluster))`.
+
+```{r}
+scc <- readRDS("~/Documents/Projects/done/2019-06_Jingli/data/sce_mm_zf_combined.rds")
+
+## add colData
+cdm <- colData(scxiao)[, c("Cluster","orig.ident"), drop = FALSE]
+cdm$Sample <- "mouse"
+cdm$cell <- rownames(cdm)
+
+## Mouse cells only
+scm <- scc[, colnames(scxiao)]
+
+cdm <- cbind(cdm[colnames(scm),],
+    colData(scm)[, c("cluster.20","sizeFactor")])
+
+colData(scm) <- cdm[colnames(scm),]
+```
+
+```{r rev_umap_xiao_origCluster_all}
+scABC2::plot_reducedDim_from_sce(scm, "UMAP", color_by = "Cluster",
+    exprs_values = "logcounts.batch", size_by = .5, alpha = .5)
+```
+```{r rev_umap_xiao_origClusterOfInterest}
+scABC2::plot_reducedDim_from_sce(scm[,scm$Cluster %in% c("Epi","FBs","Mutant EPDCs")], "UMAP", color_by = "Cluster",
+    exprs_values = "logcounts.batch", size_by = .5, alpha = .5) +
+    ggtitle("Focus on cell types of interest")
+```
+
+```{r rev_umap_xiao_origIdent}
+scABC2::plot_reducedDim_from_sce(scm[,scm$Cluster %in% c("Epi","FBs","Mutant EPDCs")], "UMAP", color_by = "orig.ident",
+    set_color=FALSE, size_by = .5, alpha = .5) +
+    ggtitle("Focus on cell types of interest")
+```
+
+### Expression of our genes of interest in the mouse cells of interest from Xiao et al.:
+
+```{r rev_umap_xiao_goi, fig.height = 20, fig.width=20}
+pl <- lapply(gns_aepc, function(i){
+    if(i %in% rownames(scm)){
+        p <- scABC2::plot_reducedDim_from_sce(scm[,scm$Cluster %in% c("Epi","FBs","Mutant EPDCs")],
+            "UMAP", 
+            color_by = i, add_cell_info = "orig.ident",
+            exprs_values = "logcounts.batch", size_by = .5, alpha = .5,
+            set_color=FALSE) +
+            scale_color_viridis_c(direction = -1, option = "magma") +
+            facet_grid(~orig.ident) +
+            theme(legend.position = "bottom")
+        return(p)
+    }
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in mouse cells (Xiao et al)")
+```
+
+# Public data sets
+
+For details of how the individual files were wrestled into `SCE` objects, see `publicDataProcessing.md`.
+
+
+## Kapuria et al
+
+```{r}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+kap.sce <- readRDS(paste0(data_dir, "Kapuria2022_integrated_cells_uninj_7dpa_hrt_sce.rds"))
+```
+
+
+```{r fig.width = 10, fig.height = 7}
+scABC2::plot_reducedDim_from_sce(kap.sce,"UMAP",
+        color_by = "label", size_by = 1.5,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=TRUE) + #label_by = "label") + 
+        facet_grid(.~orig.ident) + 
+        ggtitle("Kapuria cell labels", subtitle = "Kapuria et al. 2022") +
+        theme(legend.position = "bottom")
+```
+
+```{r umap_kapuria, fig.width = 25, fig.height = 30, eval=FALSE}
+pl <- lapply(gns_aepc, function(x){
+    p <- scABC2::plot_reducedDim_from_sce(kap.sce,"UMAP",
+        color_by = x, size_by = 1.5,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Kapuria et al. 2022") +
+        theme(legend.position = "bottom")
+    return(p)
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+```{r umap_kapuria_PDF, fig.width = 15, fig.height = 9}
+for(x in gns_aepc){
+    p <- scABC2::plot_reducedDim_from_sce(kap.sce,"UMAP",
+        color_by = x,size_by = 1.5,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Kapuria et al. 2022") +
+        theme(legend.position = "bottom")
+    print(p)
+}
+#ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+## Sun et al
+
+```{r}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+sun.sce <- readRDS(paste0(data_dir, "Sun2022_Epicard_uninured_and_injured_sce.rds"))
+```
+
+```{r fig.width = 10, fig.height = 7}
+scABC2::plot_reducedDim_from_sce(sun.sce,"UMAP",
+        color_by = "ident",
+        exprs_values="logcounts",
+        add_cell_info="Condition", 
+        set_color=TRUE) + #label_by = "ident") + 
+        facet_grid(.~Condition) + 
+        ggtitle("Sun cell labels") +
+        theme(legend.position = "bottom")
+```
+
+```{r umap_sun, fig.width = 25, fig.height = 30}
+pl <- lapply(gns_aepc, function(x){
+    p <- scABC2::plot_reducedDim_from_sce(sun.sce,"UMAP",
+        color_by = x,
+        exprs_values="logcounts",
+        add_cell_info="Condition", 
+        set_color=FALSE) + #label_by = "ident") + 
+        facet_grid(.~Condition) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Sun et al.") +
+        theme(legend.position = "bottom")
+    return(p)
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+## DeBakkers et al (2021): Zebrafish
+
+```{r}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+bak.sce <- readRDS(paste0(data_dir, "DeBakkers_sce.RDS"))
+```
+
+
+```{r debakkers_overview, fig.width = 11, fig.height = 7}
+scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
+        color_by = "group", size_by = 1,
+        add_cell_info = "group",
+        set_color=FALSE) +
+    scale_color_manual(values = c("red","grey")) +
+        ggtitle("DeBakkers groups") +
+        theme(legend.position = "bottom") +facet_grid(.~group)
+
+scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
+        color_by = "cluster",size_by = 1,
+         add_cell_info = "group",
+        set_color=TRUE)+ #label_by = "cluster") + 
+        ggtitle("DeBakkers groups") +
+        theme(legend.position = "bottom") + facet_grid(.~group)
+
+```
+
+Need to turn the ENSEMBL Ids into gene symbols.
+
+```{r add_gene_symbols_to_bakkers, eval=FALSE}
+sce <- readRDS("/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+gns <- rowData(sce)
+rm(sce);gc()
+gns <- as.data.frame(gns[, c("id","symbol")])
+rownames(gns) <- gns$id
+rowData(bak.sce)$symbol <- gns[rowData(bak.sce)$ID, "symbol", drop=TRUE]
+
+rownames(bak.sce) <- scater::uniquifyFeatureNames(rowData(bak.sce)$ID, rowData(bak.sce)$symbol)
+##!saveRDS(bak.sce, paste0(data_dir, "DeBakkers_sce.RDS"))
+```
+
+The following genes are missing from the DeBakkers dataset:
+
+* Col12a1b
+
+```
+Previously named: si:ch211-106k22.1
+ENSEMBL gene ID: ENSDARG00000019601
+ENSEMBL transcript IDs:
+ENSDART00000025926.9
+ENSDART00000151248.4
+ENSDART00000151239.2
+```
+
+* Hmgb2a
+
+```
+Previously named: hmgb2, wu:fb22b10, wu:fc95d12, zgc:123215
+ENSEMBL gene ID: ENSDARG00000029722
+ENSEMBL transcript IDs:
+ENSDART00000047159.7    
+ENSDART00000137451.2    
+ENSDART00000142811.2
+ENSDART00000142060.2
+```
+ 
+* Cal3b
+
+```
+Previously named: calr3, calrl, cb583, id:ibd1087, sb:cb583, wu:fc59g10
+ENSEMBL gene ID: ENSDARG00000102808
+ENSEMBL transcript ID: ENSDART00000158147.3
+```
+
+```{r umap_bakkers, fig.width = 25, fig.height = 30}
+pl <- lapply(gns_aepc, function(x){
+    p <- scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
+        color_by = x, size_by = 1.5,
+        exprs_values="norm_counts",
+        add_cell_info="group", 
+        set_color=FALSE) + 
+        facet_grid(.~group) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "DeBakkers et al.") +
+        theme(legend.position = "bottom")
+    return(p)
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+```{r}
+dittoSeq::dittoBoxPlot(bak.sce, var = "ptx3a", group.by = "group", plots = c("boxplot","jitter"), boxplot.lineweight = .1)
+
+dittoSeq::dittoRidgePlot(bak.sce[, as.character(bak.sce$cluster) %in% c("3","9","5")], var = "ptx3a",group.by="group") + ggtitle("Only cells of clusters 3, 9, 5")
+
+dittoSeq::dittoDotPlot(bak.sce, vars = gns_aepc[gns_aepc %in% rownames(bak.sce)], group.by = "group") + ggtitle("Bakkers et al. 2021")
+
+dittoSeq::dittoDotPlot(bak.sce, vars = gns_aepc[gns_aepc %in% rownames(bak.sce)], group.by = "group",scale=FALSE) + ggtitle("Bakkers et al. 2021")
+```
+
+
+## Hesse et al. (2021): Mouse EpiSC
+
+```{r cache=FALSE}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+hesse.sce <- readRDS(paste0(data_dir, "Hesse2021_EPDC.SCTransform.integrated_sce.rds"))
+```
+
+We currently have the data for Figure 1: "Cell populations in EpiSC from the infarcted heart"
+
+>Epicardial stromal cells (EpiSC) and activated cardiac stromal cells (aCSC) were simultaneously collected from the surface and the myocardium of the isolated perfused heart by applying mild shear forces to the cardiac surface at 5 days post myocardial infarction (MI) (n = 3).
+CSC were purified from three non-infarcted control hearts 5 days after sham surgery. Mesh purification, low-speed centrifugation, and cell sorting by flow cytometry were performed to remove cardiomyocytes,
+CD31+ endothelial cells, CD45+ immune cells, and apoptotic or necrotic cells before analysis using the 10x Genomics Chromium platform.
+
+```{r hesse_split_by_sample, fig.width = 18, fig.height = 8}
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", 
+    which_reddim = "UMAP", color_by = "ident", add_cell_info = "orig.ident") + 
+    facet_wrap(~orig.ident)
+
+```
+
+>pooled EpiSC fraction (n = 13,796 single cells).
+
+```{r umaps_hesse_overviews}
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "orig.ident", set_colors=FALSE)
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "proliferation_markers1", set_color = FALSE) + scale_color_viridis_c(direction=-1)
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "migration_markers1", set_color = FALSE) + scale_color_viridis_c(direction=-1)
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "seurat_clusters", set_color = TRUE) 
+```
+
+Based on Figure 1, I can see that they removed "idents" corresponding to "CM", "Ery" and Number 6 ("Hybrids")
+
+- EpiSC, aCSC = 5dpi MI
+- CSC = control, non MI
+
+Need homologous genes.
+
+```{r}
+homos <- readRDS("/Users/frd2007/Documents/Projects/2020-09_CZI_JamesJingli/data/rowData_ZFMMHomolog.rds")
+gns_aepc.mm <- homos[zf.GeneSymbol %in% gns_aepc]$mm.GeneSymbol %>% unique
+```
+
+
+```{r umap_hesse_PDF, fig.width = 15, fig.height = 15}
+for(x in gns_aepc.mm){
+    p <- scABC2::plot_reducedDim_from_sce(hesse.sce,"UMAP",
+        color_by = x, size_by = 1,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        #facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Hesse et al. 2021") +
+        theme(legend.position = "bottom")
+    print(p)
+}
+#ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF for pooled EpiSC fractions from mouse")
+```
+
+#### Additional UMAPs
+
+```{r umap_hesse2_PDF, fig.width = 15, fig.height = 15}
+gns <- c("podxl","sema3d","aldh1a2","fn1a","top2a","tmsb4x","vegfaa","hapln1b","pdgfra","pdgfrb")
+gns.mm <- sort(unique(homos[zf.GeneSymbol %in% gns]$mm.GeneSymbol))
+
+for(x in gns.mm){
+    p <- scABC2::plot_reducedDim_from_sce(hesse.sce,"UMAP",
+        color_by = x, size_by = 1,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        #facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Hesse et al. 2021") +
+        theme(legend.position = "bottom")
+    print(p)
+}
+#ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF for pooled EpiSC fractions from mouse")
+```
+
+## Monocle3 with pseudotime
+
+```{r eval=FALSE}
+#screen -r jingli
+# conda activate monocle
+# ~/miniconda3/envs/monocle/bin/R
+# cd /scratchLocal/frd2007/2019_06_Jingli/2019-08_Monocle
+devtools::load_all("monocle3/")
+
+cds <- readRDS(file = "monocle_3dpa_allCells.rds")
+
+pdf("monocle3_3dpa_allCells_pseudotime.pdf", width = 15, height = 15)
+plot_cells(cds,
+           color_cells_by = "pseudotime",
+           label_cell_groups=FALSE,
+           label_leaves=FALSE,
+           label_branch_points=FALSE,
+           graph_label_size=5, cell_size=1)
+dev.off()
+```
+
+![](/Users/frd2007/Documents/Projects/done/2019-06_Jingli/2021-10_Manuscript/monocle3_3dpa_allCells_pseudotime.pdf)
+
+### Monocle vs velocity
+
+Reviewer:
+
+>The trajectory reconstruction that is applied to the scRNAseq data is very difficult to follow. It is not clear why the auteurs did not using RNA velocity which is more commonly used to analyse directional changes in cell states.
+
+We thank the reviewer for this comment and have annotated our representation of the monocle results to make them more legible and intuitively interpretable.
+
+Trajectories are typically inferred as the optimal path(s) through the high-dimensional expression space, trying to capture how cells transition from one end of the expression continuum to the other.
+The general approach of tracing cell density in a reduced-dimensional space was initially established by the authors of the original Monocle package (Trapnell et al., 2014). 
+In the words of one of the leaders of computational single-cell analyses, "[Monocle] has been successfully applied to capture branching cell differentiation trajectories and other dynamic processes in numerous biological contexts and is by far the most common approach for inferring transcriptional dynamics" (Kharchenko, 2021).
+Following the benchmarking of dozens of trajectory-inferring algorithms by Saelens et al., we therefore applied the top-scoring tool, slingshot (Street et al., 2018), and monocle in its most recent iteration (monocle3, which has turned to partition-based graph abstraction to reconstruct trajectories with higher resolution, Cao et al., 2019).
+Despite the fact that the two algorithms use different assumptions and mathematical concepts, we saw great concordance between the results (data not shown), most strikingly in the identification of the aEPC cluster as one major branching point. While trajectory-inference methods cannot easily determine the direction of the changes, these in silico results formed the basis for our extensive tracing experiments that both confirmed the trajectory results and established the directions and relationships that we have highlighted in addition to the scRNA-seq based inferences.
+
+
+RNA velocity is an exciting new concept of measuring transcriptional dynamics that is based on rare, erraneous intronic reads captured with the typical single-cell library preparation methods that are actually aiming to enrich for mature RNAs.
+While it has been successfully applied in many settings where developmental processes were captured over a longish period of time, it has sometimes proven to be rather hit-or-miss in our hands and oftentimes results were very difficult to interpret. 
+It has been recognized in the field that the algorithms and assumptions underlying RNA velocity metrics are still a matter of intense research and development and that its current iteration is often driven by a small set of genes for which splicing happens faster than degradation, which is the type of kinetics velocity models (Bergen et al., 2021; Gennady et al., 2022). The larger our data sets become (both in terms of cells and sequencing depth) and the better our understanding of the models, the more powerful RNA velocity will become, but we believe that there would be few additional insights to be gained for our data set at hand.
+
+
+----------------------
+
+Bergen V, Soldatov RA, Kharchenko PV, Theis FJ. RNA velocity-current challenges and future perspectives. Mol Syst Biol. 2021 Aug;17(8):e10282. doi: 10.15252/msb.202110282. PMID: 34435732; PMCID: PMC8388041.
+
+Cao J, Spielmann M, Qiu X, Huang X, Ibrahim DM, Hill AJ, Zhang F, Mundlos S, Christiansen L, Steemers FJ, Trapnell C, Shendure J. The single-cell transcriptional landscape of mammalian organogenesis. Nature. 2019 Feb;566(7745):496-502. doi: 10.1038/s41586-019-0969-x. Epub 2019 Feb 20. PMID: 30787437; PMCID: PMC6434952.
+
+Gennady Gorin, Meichen Fang, Tara Chari, Lior Pachter. RNA velocity unraveled.
+bioRxiv 2022.02.12.480214; doi: https://doi.org/10.1101/2022.02.12.480214
+
+Kharchenko PV. The triumphs and limitations of computational methods for scRNA-seq. Nat Methods. 2021 Jul;18(7):723-732. doi: 10.1038/s41592-021-01171-x. Epub 2021 Jun 21. Erratum in: Nat Methods. 2021 Jun 30;: PMID: 34155396.
+
+Saelens W, Cannoodt R, Todorov H, Saeys Y. A comparison of single-cell trajectory inference methods. Nat Biotechnol. 2019 May;37(5):547-554. doi: 10.1038/s41587-019-0071-9. Epub 2019 Apr 1. PMID: 30936559.
+
+Street K, Risso D, Fletcher RB, Das D, Ngai J, Yosef N, Purdom E, Dudoit S. Slingshot: cell lineage and pseudotime inference for single-cell transcriptomics. BMC Genomics. 2018 Jun 19;19(1):477. doi: 10.1186/s12864-018-4772-0. PMID: 29914354; PMCID: PMC6007078.
+
+Trapnell C, Cacchiarelli D, Grimsby J, Pokharel P, Li S, Morse M, Lennon NJ, Livak KJ, Mikkelsen TS, Rinn JL. The dynamics and regulators of cell fate decisions are revealed by pseudotemporal ordering of single cells. Nat Biotechnol. 2014 Apr;32(4):381-386. doi: 10.1038/nbt.2859. Epub 2014 Mar 23. PMID: 24658644; PMCID: PMC4122333.

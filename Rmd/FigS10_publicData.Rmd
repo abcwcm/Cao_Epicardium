@@ -45,7 +45,7 @@ gns_aepc <- c("ptx3a", "col12a1b", "marcksb", "atp5mc1", "hmgb2a",
 ## Kapuria et al
 
 ```{r}
-data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+data_dir <- "data/public_datasets_revision/"
 kap.sce <- readRDS(paste0(data_dir, "Kapuria2022_integrated_cells_uninj_7dpa_hrt_sce.rds"))
 ```
 
@@ -96,7 +96,7 @@ for(x in gns_aepc){
 ## Sun et al
 
 ```{r}
-data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+data_dir <- "data/public_datasets_revision/"
 sun.sce <- readRDS(paste0(data_dir, "Sun2022_Epicard_uninured_and_injured_sce.rds"))
 ```
 
@@ -130,7 +130,7 @@ ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
 ## DeBakkers et al (2021): Zebrafish
 
 ```{r}
-data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+data_dir <- "data/public_datasets_revision/"
 bak.sce <- readRDS(paste0(data_dir, "DeBakkers_sce.RDS"))
 ```
 
@@ -156,7 +156,7 @@ scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
 Need to turn the ENSEMBL Ids into gene symbols.
 
 ```{r add_gene_symbols_to_bakkers, eval=FALSE}
-sce <- readRDS("/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+sce <- readRDS("data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
 gns <- rowData(sce)
 rm(sce);gc()
 gns <- as.data.frame(gns[, c("id","symbol")])
@@ -230,7 +230,7 @@ dittoSeq::dittoDotPlot(bak.sce, vars = gns_aepc[gns_aepc %in% rownames(bak.sce)]
 ## Hesse et al. (2021): Mouse EpiSC
 
 ```{r cache=FALSE}
-data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+data_dir <- "data/public_datasets_revision/"
 hesse.sce <- readRDS(paste0(data_dir, "Hesse2021_EPDC.SCTransform.integrated_sce.rds"))
 ```
 
@@ -264,7 +264,7 @@ Based on Figure 1, I can see that they removed "idents" corresponding to "CM", "
 Need homologous genes.
 
 ```{r}
-homos <- readRDS("/Users/frd2007/Documents/Projects/2020-09_CZI_JamesJingli/data/rowData_ZFMMHomolog.rds")
+homos <- readRDS("data/rowData_ZFMMHomolog.rds")
 gns_aepc.mm <- homos[zf.GeneSymbol %in% gns_aepc]$mm.GeneSymbol %>% unique
 ```
 

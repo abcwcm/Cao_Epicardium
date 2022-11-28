@@ -42,9 +42,9 @@ devtools::load_all("monocle3")
 
 ```{r monocle_prep_3dpa_allClusters, eval=FALSE}
 #screen -r jingli
-# conda acticate monocle
+# conda activate monocle
 # ~/miniconda3/envs/monocle/bin/R
-# cd /scratchLocal/frd2007/2019_06_Jingli/2019-08_Monocle
+# cd 2019-08_Monocle/
 devtools::load_all("monocle3/")
 ```
 
@@ -54,9 +54,9 @@ devtools::load_all("monocle3/")
 #screen -r jingli
 # conda acticate monocle
 # ~/miniconda3/envs/monocle/bin/R
-# cd /scratchLocal/frd2007/2019_06_Jingli/2019-08_Monocle
+# cd 2019-08_Monocle
 devtools::load_all("monocle3/")
-load("/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFilt_2019-06.rda")
+load("data/sce_CellGeneFilt_2019-06.rda")
 
 ## First, let's use all 3dpa cells (including those of non-Epi clusters)
 cts <- counts(sce.filt[, sce.filt$condition == "3dpa"])
@@ -125,7 +125,7 @@ Platform: x86_64-conda_cos6-linux-gnu (64-bit)
 Running under: Red Hat Enterprise Linux Server release 6.3 (Santiago)
   
 Matrix products: default
-BLAS/LAPACK: /pbtech_mounts/homes022/frd2007/miniconda3/envs/monocle/lib/libopenblasp-r0.3.6.so
+BLAS/LAPACK: /miniconda3/envs/monocle/lib/libopenblasp-r0.3.6.so
   
 locale:
  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C
