@@ -18,7 +18,7 @@ For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were 
 
 * the `SingleCellExperiment` object named "sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds" in the scripts here, can be found [here](https://wcm.box.com/shared/static/uqv3zlp17txnb2548d7lvw43moka96yl.rds) -- caution, this is the direct link to the RDS file!
 
-For additional objects inlcuding the `SingleCellExperiment` objets that we generated from other publicly available scRNA-seq data, please get in touch with `abc at med.cornell.edu`, we're happy to share then with you via whatever route works best for you.
+For additional objects including the `SingleCellExperiment` objets that we generated from other publicly available scRNA-seq data, please get in touch with `abc at med.cornell.edu`, we're happy to share then with you via whatever route works best for you.
 
 ## CUSTOM PLOTTING FUNCTIONS
 
