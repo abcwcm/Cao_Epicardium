@@ -38,28 +38,36 @@ devtools::load_all("monocle3")
 
 ```
 
-## 3dpa, epicardial cells (*tcf21* high) only
+## 3dpa, all cells
 
-```{r monocle_prep_3dpa_epiClustersOnly, eval=FALSE}
-## ADD LOAD FROM BOX
-sce <- readRDS("/scratchLocal/frd2007/2019_06_Jingli/2019-07_3dpa_only/sce_3dpa_ScTransform_ClustRemoved_2019-07.rds")
-cd <- colData(sce)[, c("Sample", "ori_barcodes", "cell_names", "condition", "clusters_d3.03", "res.01")]  
-rd <- rowData(sce)[, c("id","symbol")]
-rd$gene_short_name <- rd$symbol
+```{r monocle_prep_3dpa_allClusters, eval=FALSE}
+#screen -r jingli
+# conda acticate monocle
+# ~/miniconda3/envs/monocle/bin/R
+# cd /scratchLocal/frd2007/2019_06_Jingli/2019-08_Monocle
+devtools::load_all("monocle3/")
+load("/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFilt_2019-06.rda")
 
-## construct cds
-cds <- new_cell_data_set(counts(sce),
-                         cell_metadata = cd,
-                         gene_metadata = rd)
+## First, let's use all 3dpa cells (including those of non-Epi clusters)
+cts <- counts(sce.filt[, sce.filt$condition == "3dpa"])
+cd <- colData(sce.filt[, sce.filt$condition == "3dpa"])[, c("Sample", "ori_barcodes", "cell_names", "condition")]  
+
+## FOLLOWING THESE PRESCRIPTIONS: https://cole-trapnell-lab.github.io/monocle3/monocle3_docs/#getting-started-with-monocle-3
+cds <- new_cell_data_set(cts, cell_metadata = cd, gene_metadata = rowData(sce.filt))
 
 cds <- preprocess_cds(cds, num_dim = 100)
 
 set.seed(123)
 cds <- reduce_dimension(cds, reduction_method = "UMAP", preprocess_method = "PCA")
 cds <- cluster_cells(cds, reduction_method = "UMAP") # can be accessed:  clusters(cds)
+## dimensionality reduction
 cds <- learn_graph(cds)
+## order_cells() assigns cells a pseudotime value based on their projection on the
+## principal graph learned in the ‘learn_graph’ function and the
+## position of chosen root states. 
 #cds <- order_cells(cds) ## this needs shiny unless we specify the root nodes of the trajectory graph
 
+## extracting root cells in a somewhat automated manner
 get_earliest_principal_node <- function(cds, partition=NULL){
     
     if(!is.null(partition)){
@@ -81,161 +89,24 @@ get_earliest_principal_node <- function(cds, partition=NULL){
 
 root_cells <- unlist(lapply(levels(partitions(cds)), function(x) get_earliest_principal_node(cds, partition = x)))
 cds <- order_cells(cds, root_pr_nodes = root_cells)
-saveRDS(cds, file = "monocle_3dpa_clstRemoved.rds")
+saveRDS(cds, file = "monocle_3dpa_allCells.rds")
 ```
 
-From monocle3' documentation:
+```{r plotting_cells_3dpa_all, eval=FALSE}
+rowData(cds)$gene_short_name <- rowData(cds)$symbol
 
->The black lines show the structure of the graph. Note that the graph is not fully connected: cells in different partitions are in distinct components of the graph.
-
->The circles with numbers in them denote special points within the graph. Each leaf, denoted by light gray circles, corresponds to a different outcome (i.e. cell fate) of the trajectory. Black circles indicate branch nodes, in which cells can travel to one of several outcomes.
-
->Note that some of the cells are gray. This means they have infinite pseudotime, because they were not reachable from the root nodes that were picked. In general, any cell on a partition that lacks a root node will be assigned an infinite pseudotime. In general, you should choose at least one root per partition.
-
-Coloring by our original clusters:
-
-```{r eval=FALSE}
-## load SCE
-scf <- readRDS(file = "sce_CellGeneFiltWithScTransformBatchCorrect_ClustRemoved_2019-07.rds")
-
-## extract cluster information (epicardial cells only, but all conditions)
-cd_old <- colData(scf)[, c("Sample","cell_names","clusters.03")] %>% as.data.frame %>% as.data.table
-cd_new <- colData(cds) %>% as.data.table
-cd_combined <- cd_old[cd_new, on = "cell_names"]
-## add our customized labels
-our_labs <- data.table(clusters.03 = as.character(0:6),
-                       clust.label = c("periv.btg2", "periv.vegfaa", "aldh1a2", "adh8", "3dpa-specific", "ribo", "7dpa-specific"))
-cd_combined <- our_labs[cd_combined, on = "clusters.03"]     
-cd_combined <- as.data.frame(cd_combined)
-rownames(cd_combined) <- cd_combined$cell_names
-colData(cds)$clusters.03 <- cd_combined[colnames(cds),]$clusters.03
-colData(cds)$clust.labels <- factor(cd_combined[colnames(cds),]$clust.label, levels = c("periv.btg2", "periv.vegfaa", "aldh1a2", "adh8", "3dpa-specific", "ribo", "7dpa-specific"), ordered = TRUE)
-
-## define colors
-cluster_cols <- ABCutilities:::fx.get_palette_ABC("paired_pal")[seq_len(length(unique(cd_combined$clust.label)))]
-
-
-## use Monocle's printing function
-png("monocle3_clusters03.png", width = 900)
-plot_cells(cds, color_cells_by = "clust.labels", label_cell_groups=FALSE,label_leaves=FALSE,label_branch_points=FALSE,graph_label_size=5, cell_size = 1) +
-  scale_color_manual(values = cluster_cols)
+png("monocle3_3dpa_allCells.png", width = 700)
+plot_cells(cds, color_cells_by = "cluster", ## this will be the clusters determined by monocle
+           label_cell_groups=FALSE, label_leaves=FALSE,label_branch_points=FALSE,graph_label_size=5, 
+           cell_size = 1)
 dev.off()
 
-png("monocle3_markerGenes.png", width = 1400)
-plot_cells(cds, genes = c("top2a","aldh1a2","fn1a"), label_cell_groups=FALSE,label_leaves=FALSE,label_branch_points=FALSE,graph_label_size=5, cell_size = 1)
+png("monocle3_3dpa_allCells_markerGenes.png", width = 900, height = 900)
+plot_cells(cds, genes = c("top2a","tcf21","fn1a", "cd74a","fli1a","tpm1"), label_cell_groups=FALSE, label_leaves=FALSE,label_branch_points=FALSE,graph_label_size=5, 
+           cell_size = 1)
 dev.off()
 ```
 
-### DE analysis
-
-Which genes have cluster-dependent expression?
-
-```{r DE_following_clusters, eval=FALSE}
-gene_fits <- fit_models(cds, model_formula_str = "~clusters.03")
-fit_coefs = coefficient_table(gene_fits)
-## coefficient_table() calculates tests each coefficient for whether it is significantly different than zero under the Wald test. By default, coefficient_table() adjusts these p-values for multiple hypothesis testing using the method of Benjamini and Hochberg. 
-subset(fit_coefs, q_value <= 0.05 & term != "(Intercept)")
-# A tibble: 7,568 x 12
-#   id    symbol gene_short_name status term  estimate std_err test_val  p_value
-#   <chr> <chr>  <chr>           <chr>  <chr>    <dbl>   <dbl>    <dbl>    <dbl>
-# 1 ENSD… rpl18a rpl18a          OK     clus…    0.198  0.0216     9.17 8.10e-20
-# 2 ENSD… rpl18a rpl18a          OK     clus…   -0.196  0.0188   -10.4  4.51e-25
-# 3 ENSD… rpl18a rpl18a          OK     clus…    0.445  0.0317    14.0  1.35e-43
-# 4 ENSD… rpl18a rpl18a          OK     clus…    0.233  0.0406     5.73 1.09e- 8
-# 5 ENSD… nap1l1 nap1l1          OK     clus…    0.502  0.0769     6.53 7.30e-11
-# 6 ENSD… nap1l1 nap1l1          OK     clus…    0.428  0.0720     5.94 3.08e- 9
-# 7 ENSD… nap1l1 nap1l1          OK     clus…    0.930  0.0671    13.9  1.50e-42
-# 8 ENSD… creb3… creb3l2         OK     clus…   -0.464  0.0773    -6.00 2.13e- 9
-# 9 ENSD… creb3… creb3l2         OK     clus…   -0.947  0.0814   -11.6  1.06e-30
-#10 ENSD… creb3… creb3l2         OK     clus…   -0.427  0.0714    -5.98 2.48e- 9
-# … with 7,558 more rows, and 3 more variables: normalized_effect <dbl>,
-#   model_component <chr>, q_value <dbl>
-```
-
-
-Which genes change along pseudotime?
-
->How do we find the genes that are differentially expressed on the different paths through the trajectory?
->How do we find the ones that are restricted to the beginning of the trajectory? Or excluded from it?
-Once again, we turn to graph_test(), this time passing it neighbor_graph="principal_graph", which tells it to **test whether cells at similar positions on the trajectory have correlated expression**:
-
-```{r genes_changing_along_pseudotime, eval=FALSE}
-cds_pr_test_res = graph_test(cds, neighbor_graph="principal_graph", cores=4)
-saveRDS(cds_pr_test_res, file = "monocle3_graphTestResults_pseudotime_dpa3_clstRemoved.rds")
-cds_pr_test_res <- cds_pr_test_res[order(cds_pr_test_res$q_value),]
-
-## extract genes of interest
-pr_deg_ids = row.names(subset(cds_pr_test_res, q_value < 0.05))
-
-## collect the trajectory-variable genes into module
-## essentially runs UMAP on the genes (as opposed to the cells) and then groups them into
-## modules using Louvain community analysis
-gene_module_df <- find_gene_modules(cds[pr_deg_ids,], resolution = 1e-2, cores = 1, n_sgd_threads = 1) ## currently running into segfaults
-
-
-```
-
-Monocle 3 introduces (...) draws on a powerful technique in spatial correlation analysis, the Moran’s I test. [Ref](http://cole-trapnell-lab.github.io/monocle-release/monocle3/)
-
->Moran’s I is a measure of multi-directional and multi-dimensional spatial autocorrelation.
-The statistic tells you whether cells at nearby positions on a trajectory will have similar (or dissimilar) expression levels for the gene being tested.
-Although both Pearson correlation and Moran’s I ranges from -1 to 1, the interpretation of Moran’s I is slightly different: +1 means that nearby cells will have perfectly similar expression (as in the right panel below); 0 represents no correlation (center), and -1 means that neighboring cells will be *anti-correlated* (left). 
-
-```{r plot_genes_changing_along_pseudotime, eval=FALSE}
-#plot_cells(cds,
-#           genes=gene_module_df %>% filter(module %in% c(29,20, 11,22)),
-#           label_cell_groups=FALSE,
-#           show_trajectory_graph=FALSE)
-
-## extract top genes from graph_test result
-goi <- subset(cds_pr_test_res, q_value <= 0.05) %>% rownames %>% head(., n = 30)
-goi <- goi[!grepl("^rp[ls]", goi)] ## removing ribosomal genes because they didn't really have interesting patterns
-
-png("monocle_topGenesPseudotime.png", height = 2700, width = 700)
-plot_genes_in_pseudotime(cds[rowData(cds)$gene_short_name %in% goi, ],
-                         color_cells_by="clust.labels",
-                         min_expr=0.5) +
-    scale_color_manual(values = cluster_cols)
-dev.off()
-
-```
-
-![](monocle_topGenesPseudotime.png)
-
-```{r load_data, cache.lazy=FALSE, message=FALSE}
-library(magrittr)
-library(data.table)
-library(scater)
-library(ggplot2) ; theme_set(theme_bw(base_size = 16))
-
-scf <- readRDS(file = "~/Documents/Projects/done/2019-06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_ClustRemoved_2019-07.rds")
-
-cd_old <- colData(scf)[, c("Sample","cell_names","clusters.03")] %>% as.data.frame %>% as.data.table
-## add our customized labels
-our_labs <- data.table(clusters.03 = as.character(0:6),
-                       clust.label = c("periv.btg2", "periv.vegfaa", "aldh1a2", "adh8", "3dpa-specific", "ribo", "7dpa-specific"))
-cd_combined <- our_labs[cd_old, on = "clusters.03"]     
-cd_combined <- as.data.frame(cd_combined)
-rownames(cd_combined) <- cd_combined$cell_names
-colData(scf)$clust.labels <- factor(cd_combined[colnames(scf),]$clust.label, levels = c("periv.btg2", "periv.vegfaa", "aldh1a2", "adh8", "3dpa-specific", "ribo", "7dpa-specific"), ordered = TRUE)
-
-cluster_cols <- ABCutilities:::fx.get_palette_ABC("paired_pal")[seq_len(length(unique(cd_combined$clust.label)))]
-```
-
-```{r umap_3dpa_pseudotimeMarkers, fig.width = 12, fig.height = 7}
-goi <- c("ap1s1","atp5f1c","copg2","dcn","hsd11b2","hsp90b1","hspa5","hypk","lamb1b","mdka", "sat1a.2")
-for(i in goi){
-  P <- scABC2::plot_reducedDim_from_sce(scf, which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
-                         color_by = i, 
-                         exprs_values = "log1p_sctransform.batch",
-                         add_cell_info = "condition",
-                         label_by = "clusters.03",
-                         alpha = .3, set_colors = TRUE,
-                        size_by = .5, remove_rug = TRUE) +
-    facet_wrap(~condition) + theme(legend.position = "bottom") + ggtitle(i)
-  print(P)
-}
-```
 
 
 # Session info
