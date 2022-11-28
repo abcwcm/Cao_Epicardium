@@ -1,5 +1,7 @@
 # scRNA-seq of epicardial cells during zebrafish heart regeneration
 
+>Xia et al.: *Activation of a transient progenitor state in the epicardium is required for zebrafish heart regeneration*. Nat.Commun.
+
 The Applied Bioinformatics Core analyzed single-cell RNA sequencing data generated from epicardial cells of zebrafish models of cardiac injury.
 The main goal was to understand whether different sub-populations of epicardial cells contribute to specific aspects of myocardial regeneration.
 
@@ -9,6 +11,12 @@ Subsequent analyses were performed in R following the recommendations of [Amezqu
 The analyses were also performed at a time when Seurat's `scTransform` method was en vogue.
 For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were followed.
 `monocle3` was used for pseudotime and trajectory analyses.
+
+## DATA AVAILABILITY
+
+* the `SingleCellExperiment` object named "sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds" in the scripts here, can be found [here](https://wcm.box.com/shared/static/uqv3zlp17txnb2548d7lvw43moka96yl.rds) -- caution, this is the direct link to the RDS file!
+
+For additional objects inlcuding the `SingleCellExperiment` objets that we generated from other publicly available scRNA-seq data, please get in touch with `abc at med.cornell.edu`, we're happy to share then with you via whatever route works best for you.
 
 ## Filtering
 
