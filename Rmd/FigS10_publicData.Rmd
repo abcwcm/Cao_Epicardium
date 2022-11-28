@@ -1,0 +1,309 @@
+---
+title: "Previously published scRNA-seq data sets for comparison"
+author: "Friederike Dündar"
+date: "2022-09-01; updated `r Sys.Date()`"
+output:
+  html_document:
+    toc: yes
+    code_folding: hide
+  pdf_document:
+    toc: yes
+    toc_depth: 5
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+    cache=TRUE, cache.lazy = FALSE)
+```
+```{r include=FALSE, cache=FALSE, message=FALSE}
+#library(scater)
+library(SingleCellExperiment)
+library(data.table)
+library(magrittr)
+library(ggplot2) ; theme_set(theme_bw(base_size = 16))
+library(patchwork)
+library(scABC2)
+suppressMessages(library(clusterProfiler))
+```
+
+# Public data sets
+
+For details of how the individual files were wrestled into `SCE` objects, see `publicDataProcessing.md`.
+
+aEPC markers: 
+
+>ptx3a, col12a1b, marcksb, atp5mc1, hmgb2a, hmgb2b, psmb1, hsp90b1, calr3b, serpinh1b, loxa
+
+```{r}
+gns_aepc <- c("ptx3a", "col12a1b", "marcksb", "atp5mc1", "hmgb2a",
+    "hmgb2b", "psmb1", "hsp90b1", "calr3b", "serpinh1b", "loxa")
+```
+
+
+## Kapuria et al
+
+```{r}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+kap.sce <- readRDS(paste0(data_dir, "Kapuria2022_integrated_cells_uninj_7dpa_hrt_sce.rds"))
+```
+
+
+```{r fig.width = 10, fig.height = 7}
+scABC2::plot_reducedDim_from_sce(kap.sce,"UMAP",
+        color_by = "label", size_by = 1.5,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=TRUE) + #label_by = "label") + 
+        facet_grid(.~orig.ident) + 
+        ggtitle("Kapuria cell labels", subtitle = "Kapuria et al. 2022") +
+        theme(legend.position = "bottom")
+```
+
+```{r umap_kapuria, fig.width = 25, fig.height = 30, eval=FALSE}
+pl <- lapply(gns_aepc, function(x){
+    p <- scABC2::plot_reducedDim_from_sce(kap.sce,"UMAP",
+        color_by = x, size_by = 1.5,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Kapuria et al. 2022") +
+        theme(legend.position = "bottom")
+    return(p)
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+```{r umap_kapuria_PDF, fig.width = 15, fig.height = 9}
+for(x in gns_aepc){
+    p <- scABC2::plot_reducedDim_from_sce(kap.sce,"UMAP",
+        color_by = x,size_by = 1.5,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Kapuria et al. 2022") +
+        theme(legend.position = "bottom")
+    print(p)
+}
+#ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+## Sun et al
+
+```{r}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+sun.sce <- readRDS(paste0(data_dir, "Sun2022_Epicard_uninured_and_injured_sce.rds"))
+```
+
+```{r fig.width = 10, fig.height = 7}
+scABC2::plot_reducedDim_from_sce(sun.sce,"UMAP",
+        color_by = "ident",
+        exprs_values="logcounts",
+        add_cell_info="Condition", 
+        set_color=TRUE) + #label_by = "ident") + 
+        facet_grid(.~Condition) + 
+        ggtitle("Sun cell labels") +
+        theme(legend.position = "bottom")
+```
+
+```{r umap_sun, fig.width = 25, fig.height = 30}
+pl <- lapply(gns_aepc, function(x){
+    p <- scABC2::plot_reducedDim_from_sce(sun.sce,"UMAP",
+        color_by = x,
+        exprs_values="logcounts",
+        add_cell_info="Condition", 
+        set_color=FALSE) + #label_by = "ident") + 
+        facet_grid(.~Condition) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Sun et al.") +
+        theme(legend.position = "bottom")
+    return(p)
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+## DeBakkers et al (2021): Zebrafish
+
+```{r}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+bak.sce <- readRDS(paste0(data_dir, "DeBakkers_sce.RDS"))
+```
+
+
+```{r debakkers_overview, fig.width = 11, fig.height = 7}
+scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
+        color_by = "group", size_by = 1,
+        add_cell_info = "group",
+        set_color=FALSE) +
+    scale_color_manual(values = c("red","grey")) +
+        ggtitle("DeBakkers groups") +
+        theme(legend.position = "bottom") +facet_grid(.~group)
+
+scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
+        color_by = "cluster",size_by = 1,
+         add_cell_info = "group",
+        set_color=TRUE)+ #label_by = "cluster") + 
+        ggtitle("DeBakkers groups") +
+        theme(legend.position = "bottom") + facet_grid(.~group)
+
+```
+
+Need to turn the ENSEMBL Ids into gene symbols.
+
+```{r add_gene_symbols_to_bakkers, eval=FALSE}
+sce <- readRDS("/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+gns <- rowData(sce)
+rm(sce);gc()
+gns <- as.data.frame(gns[, c("id","symbol")])
+rownames(gns) <- gns$id
+rowData(bak.sce)$symbol <- gns[rowData(bak.sce)$ID, "symbol", drop=TRUE]
+
+rownames(bak.sce) <- scater::uniquifyFeatureNames(rowData(bak.sce)$ID, rowData(bak.sce)$symbol)
+##!saveRDS(bak.sce, paste0(data_dir, "DeBakkers_sce.RDS"))
+```
+
+The following genes are missing from the DeBakkers dataset:
+
+* Col12a1b
+
+```
+Previously named: si:ch211-106k22.1
+ENSEMBL gene ID: ENSDARG00000019601
+ENSEMBL transcript IDs:
+ENSDART00000025926.9
+ENSDART00000151248.4
+ENSDART00000151239.2
+```
+
+* Hmgb2a
+
+```
+Previously named: hmgb2, wu:fb22b10, wu:fc95d12, zgc:123215
+ENSEMBL gene ID: ENSDARG00000029722
+ENSEMBL transcript IDs:
+ENSDART00000047159.7    
+ENSDART00000137451.2    
+ENSDART00000142811.2
+ENSDART00000142060.2
+```
+ 
+* Cal3b
+
+```
+Previously named: calr3, calrl, cb583, id:ibd1087, sb:cb583, wu:fc59g10
+ENSEMBL gene ID: ENSDARG00000102808
+ENSEMBL transcript ID: ENSDART00000158147.3
+```
+
+```{r umap_bakkers, fig.width = 25, fig.height = 30}
+pl <- lapply(gns_aepc, function(x){
+    p <- scABC2::plot_reducedDim_from_sce(bak.sce,"tSNE",
+        color_by = x, size_by = 1.5,
+        exprs_values="norm_counts",
+        add_cell_info="group", 
+        set_color=FALSE) + 
+        facet_grid(.~group) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "DeBakkers et al.") +
+        theme(legend.position = "bottom")
+    return(p)
+})
+ABCutilities::MultiPlotList(pl, cols = 3, title = "Genes of interest in ZF")
+```
+
+```{r}
+dittoSeq::dittoBoxPlot(bak.sce, var = "ptx3a", group.by = "group", plots = c("boxplot","jitter"), boxplot.lineweight = .1)
+
+dittoSeq::dittoRidgePlot(bak.sce[, as.character(bak.sce$cluster) %in% c("3","9","5")], var = "ptx3a",group.by="group") + ggtitle("Only cells of clusters 3, 9, 5")
+
+dittoSeq::dittoDotPlot(bak.sce, vars = gns_aepc[gns_aepc %in% rownames(bak.sce)], group.by = "group") + ggtitle("Bakkers et al. 2021")
+
+dittoSeq::dittoDotPlot(bak.sce, vars = gns_aepc[gns_aepc %in% rownames(bak.sce)], group.by = "group",scale=FALSE) + ggtitle("Bakkers et al. 2021")
+```
+
+
+## Hesse et al. (2021): Mouse EpiSC
+
+```{r cache=FALSE}
+data_dir <- "/Users/frd2007/Documents/Projects/done/2019-06_Jingli/data/public_datasets_revision/"
+hesse.sce <- readRDS(paste0(data_dir, "Hesse2021_EPDC.SCTransform.integrated_sce.rds"))
+```
+
+We currently have the data for Figure 1: "Cell populations in EpiSC from the infarcted heart"
+
+>Epicardial stromal cells (EpiSC) and activated cardiac stromal cells (aCSC) were simultaneously collected from the surface and the myocardium of the isolated perfused heart by applying mild shear forces to the cardiac surface at 5 days post myocardial infarction (MI) (n = 3).
+CSC were purified from three non-infarcted control hearts 5 days after sham surgery. Mesh purification, low-speed centrifugation, and cell sorting by flow cytometry were performed to remove cardiomyocytes,
+CD31+ endothelial cells, CD45+ immune cells, and apoptotic or necrotic cells before analysis using the 10x Genomics Chromium platform.
+
+```{r hesse_split_by_sample, fig.width = 18, fig.height = 8}
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", 
+    which_reddim = "UMAP", color_by = "ident", add_cell_info = "orig.ident") + 
+    facet_wrap(~orig.ident)
+
+```
+
+>pooled EpiSC fraction (n = 13,796 single cells).
+
+```{r umaps_hesse_overviews}
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "orig.ident", set_colors=FALSE)
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "proliferation_markers1", set_color = FALSE) + scale_color_viridis_c(direction=-1)
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "migration_markers1", set_color = FALSE) + scale_color_viridis_c(direction=-1)
+scABC2::plot_reducedDim_from_sce(hesse.sce, exprs_values = "value", which_reddim = "UMAP", color_by = "seurat_clusters", set_color = TRUE) 
+```
+
+Based on Figure 1, I can see that they removed "idents" corresponding to "CM", "Ery" and Number 6 ("Hybrids")
+
+- EpiSC, aCSC = 5dpi MI
+- CSC = control, non MI
+
+Need homologous genes.
+
+```{r}
+homos <- readRDS("/Users/frd2007/Documents/Projects/2020-09_CZI_JamesJingli/data/rowData_ZFMMHomolog.rds")
+gns_aepc.mm <- homos[zf.GeneSymbol %in% gns_aepc]$mm.GeneSymbol %>% unique
+```
+
+
+```{r umap_hesse_PDF, fig.width = 15, fig.height = 15}
+for(x in gns_aepc.mm){
+    p <- scABC2::plot_reducedDim_from_sce(hesse.sce,"UMAP",
+        color_by = x, size_by = 1,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        #facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Hesse et al. 2021") +
+        theme(legend.position = "bottom")
+    print(p)
+}
+
+```
+
+#### Additional UMAPs
+
+```{r umap_hesse2_PDF, fig.width = 15, fig.height = 15}
+gns <- c("podxl","sema3d","aldh1a2","fn1a","top2a","tmsb4x","vegfaa","hapln1b","pdgfra","pdgfrb")
+gns.mm <- sort(unique(homos[zf.GeneSymbol %in% gns]$mm.GeneSymbol))
+
+for(x in gns.mm){
+    p <- scABC2::plot_reducedDim_from_sce(hesse.sce,"UMAP",
+        color_by = x, size_by = 1,
+        exprs_values="logcounts",
+        add_cell_info="orig.ident", 
+        set_color=FALSE) + # label_by = "label") + 
+        #facet_grid(.~orig.ident) + 
+        scale_color_viridis_c(direction=-1) +
+        ggtitle(x, subtitle = "Hesse et al. 2021") +
+        theme(legend.position = "bottom")
+    print(p)
+}
+
+```
+
+-
