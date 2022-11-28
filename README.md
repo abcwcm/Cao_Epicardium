@@ -12,6 +12,8 @@ The analyses were also performed at a time when Seurat's `scTransform` method wa
 For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were followed.
 `monocle3` was used for pseudotime and trajectory analyses.
 
+![](WCM_MB_LOGO_HZSS1L_CLR_RGB.png)
+
 ## DATA AVAILABILITY
 
 * the `SingleCellExperiment` object named "sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds" in the scripts here, can be found [here](https://wcm.box.com/shared/static/uqv3zlp17txnb2548d7lvw43moka96yl.rds) -- caution, this is the direct link to the RDS file!
