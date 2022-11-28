@@ -354,164 +354,206 @@ for(i in unique(sce.filt$Sample)){
 }
 ```
 
-## Excluding Tcf21-low clusters
+```{r}
+library(scater)
+library(Seurat) # v. 3.1.0.
+library(sctransform) # sctransform_0.2.0
 
-```{r eval=TRUE, cache.lazy=FALSE}
-scf <- readRDS("sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
-
-gns <- as.data.frame(rowData(scf)[, 1:2])
-row.names(gns) <- rownames(scf)
-gns <-  as.data.table(gns, keep.rownames = TRUE)
-```
-```{r cache=FALSE}
-cluster_cols <- ABCutilities:::fx.get_palette_ABC("paired_pal")[1:length(unique(scf$res.03))]
-names(cluster_cols) <- levels(scf$res.03)
-
-condition_cols <- c("cyan4","blue2","gray85")
-names(condition_cols) <- as.character(unique(scf$condition))
+load(file = "/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFilt_2019-06.rda")
 ```
 
-```{r summary_allClusters, fig.width = 15, fig.height = 12}
-p1 <- scABC2::plot_reducedDim_from_sce(scf, which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
-                         exprs_values = "log1p_sctransform.batch",
-                         color_by = "res.03", 
-                         add_cell_info = "condition",label_by = "res.03",
-                         alpha = .3, set_colors = TRUE,
-                        size_by = .5, remove_rug = TRUE) +
-    guides(color = FALSE, fill = FALSE) +
-    ggtitle("UMAP with colors corresponding to graph-based clustering results")
-
-p2 <- scABC2::plot_reducedDim_from_sce(scf, which_reddim = "umap_scTransformBatch", which_pcs = c(1:2),
-                         exprs_values = "log1p_sctransform.batch",
-                         color_by = "tcf21", 
-                         label_by = "res.03",
-                         alpha = .3, set_colors = TRUE,
-                        size_by = .5, remove_rug = TRUE) +
-    theme(legend.position = "bottom")
-
-p3 <- make_long_dt(scf, genes = "tcf21", exprs_values = "log1p_sctransform.batch", include_metaData = c("condition","res.03")) %>% ggplot(., aes(x = res.03, y = log1p_sctransform.batch, fill = res.03)) + 
-    geom_violin(draw_quantiles = TRUE) +
-    ggbeeswarm::geom_quasirandom(size = 1, shape = 21, alpha = .7) + 
-    facet_grid(~condition) + 
-    xlab("cluster") + ylab("tcf21 expression") +
-    scale_fill_manual(values = cluster_cols) + 
-    guides(fill = FALSE) 
-
-p1 + p2 - p3 + plot_layout(ncol = 1)
-```
-
-```{r dot_plot_markers, fig.width = 10, message=FALSE, warning = FALSE}
-mks_mn <- scABC2::prep_dot_plot(scf, genes = c("tcf21",
-                                               "tpm1", "myl7", # cardiomyocytes
-                                               "mpeg1", # macrophages
-                                               "fli1a"), # endothelial cells
-                    exprs_values = "log1p_sctransform.batch", 
-                    group_by = "res.03")
-setorder(mks_mn, res.03)
-
-ggplot(mks_mn, aes(x = factor(gene, levels = c("tcf21","tpm1", "myl7", "mpeg1", "fli1a"), ordered = TRUE),
-                   y = res.03, color = mean.norm.exprs, size = pct.expressed)) +
-  geom_point() +
-  scale_color_gradient(low = "grey85", high = "red3") +
-  ylab("cell cluster") + xlab("genes (Epicardial cells | CM/SMC | M0 | Endothelial)")+
-  theme(legend.position = "bottom") +
-  ggtitle("Selected marker gene expression patterns across the cells of different clusters")
-```
-
-* Based on the expression of these and other marker genes,  we assume that:
-    - cluster 6 = smooth muscle cells
-    - cluster 10 = cardiomyocytes
-    - cluster 8 = macrophages
-    - cluster 11 = endothelial cells
-    
-To focus on cells of the epicardium, we're going to exclude these clusters.
-
-## Reprocessing data after cluster removal
-
-```{r removing_clusters_and_reprocess, eval=FALSE}
-scf <- scf[, !(as.character(scf$res.03) %in% c("6","8","10","11"))]
-scf <- calculateQCMetrics(scf)
-
-## remove genes with fewer more than 99.85% dropouts (approx. 5 cells per condition must
-## express a given gene
-gns_drps <-  scABC2::calc_dropouts_per_cellGroup(scf, rownames(scf), split_by = "Sample")
-keep_gns <- unique(gns_drps[pct.zeroCov_cells <= 99.85]$gene)
-scf <- scf[keep_gns,]
-
-## re-do clustering ===========================================
-srt <- CreateSeuratObject(counts = counts(scf), 
-                          project = "Epi_clusterRemove", assay = "RNA",
+```{r seurat_processing, eval=FALSE}
+## convert to Seurat object
+srt <- CreateSeuratObject(counts = counts(sce.filt), 
+                          project = "Epi", assay = "RNA",
                           min.cells = 0, min.features = 0,
-                          names.field = 1, 
-                          meta.data = as.data.frame(colData(scf)[, c("Sample","condition")])
-                          )
+                          names.field = 1#, 
+                         # meta.data = as.data.frame(colData(sce.filt) )
+)
 
-srt <- SCTransform(srt, new.assay.name = "scTrans_batch_ClustRemove", batch_var = 'condition')
+srt <- SCTransform(srt, new.assay.name = "scTrans")
+```
 
-srt <- RunPCA(object = srt, features = VariableFeatures(object = srt), do.print = FALSE)
-png("elbow_plot_scTransformBatchClustRemove.png")
+`SCTransform`  returns a Seurat object with a new assay and:
+ - `counts` being (corrected) counts, i.e., Pearson residuals are turned into counts (as if all cells had the same number of UMI) [Ref](https://github.com/ChristophH/sctransform/issues/17)
+ - `data` being log1p(corrected counts) --> this is what's going to be used for visualizations etc.!
+ - `scale.data` being pearson residuals
+    - "The residuals of our 'regularized negative binomial regression' represent effectively normalized data values that are no longer influenced by technical characteristics, but preserve heterogeneity driven by distinct biological states."
+    - "Pearson residuals are independent of sequencing depth, and can be used for *variable gene selection, dimensional reduction, clustering, visualization, and differential expression*"
+    - the Pearson residuals in the scale.data slot are the ones of the most variable genes!
+
+### scTransform
+
+```{r seurat_scTransform_PCA, eval=FALSE}
+### PCA  ==========================================
+srt <- RunPCA(object = srt,
+              features = VariableFeatures(object = srt),
+              do.print = FALSE)
+
+png("elbow_plot_scTransform.png")
 ElbowPlot(object = srt) # -->  to determine the # of dims for tSNE
 dev.off()
 
-png("pca_dimLoadings_scTransformBatchClustRemove.png", height = 1900, width = 1500)
+png("pca_dimLoadings_scTransform.png", height = 1900, width = 1500)
 VizDimLoadings(srt, dims = 1:20, reduction = "pca")
 dev.off()
 
-png("pca_dimPlot_scTransformBatchClustRemove.png", height = 1500, width = 1500)
-DimPlot(srt, reduction = "pca",  group.by = "orig.ident")
+png("pca_dimPlot_scTransform.png", height = 1500, width = 1500)
+DimPlot(srt)
 dev.off()
 
-png("pca_dimHeatmaps_scTransformBatchClustRemove.png", height = 1500, width = 800)
+png("pca_dimHeatmaps_scTransform.png", height = 1500, width = 800)
 DimHeatmap(srt, dims = 1:20,  balanced = TRUE) #equal number of genes with both + and - scores
 dev.off()
+```
 
+#### UMAP
+
+```{r seurat_scTransform_umap, eval=FALSE}
 srt <- RunUMAP(object = srt, 
                reduction = "pca",
-               dims = 1:20,# check the elbow plot
+               dims = 1:15,# check the elbow plot
                n.neighbors = 30L,
                metric = "correlation")
 
-srt <- FindNeighbors(srt, dims = 1:20) #construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods (Jaccard similarity)
+png("umap_scTransform.png")
+DimPlot(srt, reduction = "umap")
+dev.off()
+```
+```{r clustering_sctransform, eval=FALSE}
+### Clusters =======================================
+srt <- FindNeighbors(srt, dims = 1:15) #construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods (Jaccard similarity)
 srt <- FindClusters(srt, resolution = .8) #Louvain algorithm 
-markers_srt.08 <- FindAllMarkers(srt)
-
 srt <- FindClusters(srt, resolution = .3) #Louvain algorithm 
-markers_srt.03 <- FindAllMarkers(srt)
+
+##!save(srt, file = "/scratchLocal/frd2007/2019_06_Jingli/data/seurat_scTransform.rda")
+
+#markers_seurClsts <- FindAllMarkers(srt)
+#save(markers_seurClsts, file = "/athena/abc/scratch/frd2007/2019-05_MikeNotaras/data/markers_seurat_scTransform_June21.rda")
 
 
-saveRDS(srt, file = "seurat_scTransformBatchCorrectedClustersRemoved.rds")
+png("var_genes_scTransform.png")
+plot1 <- VariableFeaturePlot(srt)
+plot2 <- LabelPoints(plot = plot1, 
+                     points = head(VariableFeatures(srt), 20), 
+                     repel = TRUE)
+print(plot2)
+dev.off()
 ```
 
-```{r regenerating_scf_object, eval=FALSE}
-cd_srt <-  srt@meta.data
-scf$clusters.03 <- cd_srt[colnames(scf),]$scTrans_batch_ClustRemove_snn_res.0.3
-scf$clusters.08 <- cd_srt[colnames(scf),]$scTrans_batch_ClustRemove_snn_res.0.8
+### Batch correction
+
+```{r sctransform_with_batch_correction}
+srt$condition <- gsub("-.*","",names(srt$nCount_RNA))
+
+srt.batch <- SCTransform(srt, new.assay.name = "scTrans_batch", batch_var = 'condition')
+### PCA  ==========================================
+srt.batch <- RunPCA(object = srt.batch,
+              features = VariableFeatures(object = srt.batch),
+              do.print = FALSE)
+
+png("elbow_plot_scTransformBatch.png")
+ElbowPlot(object = srt.batch) # -->  to determine the # of dims for tSNE
+dev.off()
+
+png("pca_dimLoadings_scTransformBatch.png", height = 1900, width = 1500)
+VizDimLoadings(srt.batch, dims = 1:25, reduction = "pca")
+dev.off()
+
+png("pca_dimPlot_scTransformBatch.png", height = 1500, width = 1500)
+DimPlot(srt.batch, reduction = "pca",  group.by = "orig.ident")
+dev.off()
+
+png("pca_dimHeatmaps_scTransformBatch.png", height = 1500, width = 800)
+DimHeatmap(srt.batch, dims = 1:25,  balanced = TRUE) #equal number of genes with both + and - scores
+dev.off()
+
+srt.batch <- RunUMAP(object = srt.batch, 
+               reduction = "pca",
+               dims = 1:30,# check the elbow plot
+               n.neighbors = 30L,
+               metric = "correlation")
+
+png("umap_scTransformBatch.png")
+DimPlot(srt.batch, reduction = "umap", group.by = "orig.ident")
+dev.off()
+
+### Clusters =======================================
+srt.batch <- FindNeighbors(srt.batch, dims = 1:30) #construct a KNN graph based on the euclidean distance in PCA space, and refine the edge weights between any two cells based on the shared overlap in their local neighborhoods (Jaccard similarity)
+srt.batch <- FindClusters(srt.batch, resolution = .8) #Louvain algorithm 
+srt.batch <- FindClusters(srt.batch, resolution = .1) #Louvain algorithm 
+srt.batch <- FindClusters(srt.batch, resolution = .3) #Louvain algorithm 
+markers_srt.batch.03 <- FindAllMarkers(srt.batch)
+
+
+save(srt.batch, file = "/scratchLocal/frd2007/2019_06_Jingli/data/seurat_scTransformBatchCorrected.rda")
+
+save(markers_srt.batch.03, file = "/scratchLocal/frd2007/2019_06_Jingli/data/markers_seurat_res03.rda")
+```
+
+
+```{r seurat_scTransform_combine_with_sce, eval=FALSE}
+## Add Seurat info back to SCE ==========================================
+
+### clustering
+cd_srt <-  srt.batch@meta.data
+sce.filt$res.03 <- cd_srt[colnames(sce.filt),]$scTrans_batch_snn_res.0.3
+sce.filt$res.08 <- cd_srt[colnames(sce.filt),]$scTrans_batch_snn_res.0.8
 
 ### reduced dimensions
-reducedDim(scf, "pca_scTransformBatch") <- Embeddings(object = srt, reduction = "pca")[colnames(scf),]
-reducedDim(scf, "umap_scTransformBatch") <- Embeddings(object = srt, reduction = "umap")[colnames(scf),]
+reducedDim(sce.filt, "pca_scTransformBatch") <- Embeddings(object = srt.batch, reduction = "pca")[colnames(sce.filt),]
+reducedDim(sce.filt, "umap_scTransformBatch") <- Embeddings(object = srt.batch, reduction = "umap")[colnames(sce.filt),]
 
 ### normalized data
-rnms <- data.table(ori = row.names(scf)) # get original rownames -- Seurat replaces underscores with hyphens...
+rnms <- data.table(ori = row.names(sce.filt)) # get original rownames -- Seurat replaces underscores with hyphens...
 rnms[,seurat := gsub("_","-", ori)]
 
 ## the default setting of sctransform::vst is to remove genes expressed in fewer than 5 cells,
 ## therefore I need to adjust the data set
-normd <- as.data.table(as.matrix(GetAssayData(object = srt)), keep.rownames = TRUE) # log1p(corrected counts, i.e. Pearson residuals)
+normd <- as.data.table(as.matrix(GetAssayData(object = srt.batch)), keep.rownames = TRUE) # log1p(corrected counts, i.e. Pearson residuals)
 setnames(normd, "rn", "seurat")
 normd <- rnms[normd, on = "seurat"]
-dim(scf)
-#[1] 17443 14051
-scf <- scf[normd$ori, ] ## filtering!
-dim(scf)
-#[1] 17443 14051
+dim(sce.filt)
+#[1] 24127 15141
+sce.filt <- sce.filt[normd$ori, ] ## filtering!
+dim(sce.filt)
+#> [1] 20329 15141
 
 normd.m <- as.matrix(normd[, -c("seurat", "ori"), with=FALSE])
 rownames(normd.m) <- normd$ori
-normd.m <- normd.m[rownames(scf), colnames(scf)]
-assay(scf, "log1p_sctransform.batch") <- normd.m
+normd.m <- normd.m[rownames(sce.filt), colnames(sce.filt)]
+assay(sce.filt, "log1p_sctransform.batch") <- normd.m
 
-saveRDS(scf, file = "sce_CellGeneFiltWithScTransformBatchCorrect_ClustRemoved_2019-07.rds")
+saveRDS(sce.filt, file = "/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds")
+
+rm(normd)
+gc()
+
+```
+
+### SC3-based marker genes
+
+Using the clustering from Seurat (resolution: 0.3)
+
+```{r eval=FALSE}
+## SC3-based markers
+## following prescription here: https://github.com/loosolab/cardiac-progenitors/blob/master/src/04_clustering.R
+markers_sc3.batch_res03 <- SC3::get_marker_genes( assay(sce.filt, "log1p_sctransform.batch"),
+                                                  as.numeric(sce.filt$res.03))
+row.names(markers_sc3.batch_res03) <- rownames(sce.filt)
+save(markers_sc3.batch_res03, file = "/scratchLocal/frd2007/2019_06_Jingli/data/markers_SC3_2019-07.rda")
+```
+
+```{r}
+load("/Users/frd2007/Documents/Projects/2019-06_Jingli/data/markers_SC3_2019-07.rda") # markers_sc3.batch_res03
+
+markers_sc3.batch_res03 <- subset(markers_sc3.batch_res03, !is.na(auroc))
+markers_sc3.batch_res03$clusts <- factor(markers_sc3.batch_res03$clusts - 1, levels = levels(scf$res.03), ordered = TRUE)
+```
+
+```{r}
+subset(markers_sc3.batch_res03, auroc > 0.7 & pvalue <= 0.01) %>% ggplot(., aes(x = clusts, fill = clusts)) + geom_bar() + scale_fill_manual(values = ABCutilities:::fx.get_palette_ABC("paired_pal")[1:length(unique(scf$res.03))])
+
 ```
 
 
