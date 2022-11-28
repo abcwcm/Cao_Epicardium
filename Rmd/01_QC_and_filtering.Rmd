@@ -58,7 +58,7 @@ library(scABC2) # min.  v. 1.5.0. to provide function for reading in 10X data
 
 samples <- c("3dpa-all","3dpa-epi","7dpa-all","7dpa-epi","Ctrl-all","Ctrl-epi")
 
-data_dirs <- paste0("/scratchLocal/frd2007/2019_06_Jingli/data/CellRanger/", samples, "/outs/filtered_feature_bc_matrix/")
+data_dirs <- paste0("2019_06_Jingli/data/CellRanger/", samples, "/outs/filtered_feature_bc_matrix/")
 names(data_dirs) <- samples
 sce <- read10XResults.abc(data_dir=data_dirs,
                            barcode_file="barcodes.tsv.gz", genes_file = "features.tsv.gz", matrix_file = "matrix.mtx.gz",
@@ -89,7 +89,7 @@ sce <- scater::calculateQCMetrics(sce,  feature_controls = list(mito = which(chr
 colData(sce)$condition <- gsub("-.*", "", sce$Sample)
 colData(sce)$cell_populations <- gsub(".*-", "", sce$Sample)
 
-##! save(sce, file = "/scratchLocal/frd2007/2019_06_Jingli/data/sce_original.rda")
+##! save(sce, file = "2019_06_Jingli/data/sce_original.rda")
 
 
 ########################## PART 2 CELL FILTERING ###############################
@@ -98,7 +98,7 @@ library(ggplot2); theme_set(theme_bw(base_size = 16))
 condition_cols <- c("cyan4","blue2","gray85")
 cell_pop_cols <- c("goldenrod4","gold1")
 
-source("/scratchLocal/frd2007/2019_06_Jingli/src/qc_plots.R")
+source("2019_06_Jingli/src/qc_plots.R")
 
 ## Mito content ---------------------------------------------------------
 high.mito <- lapply(samples, function(x) isOutlier(sce[,sce$Sample == x]$pct_counts_mito, nmads = 5, type = "higher"))
@@ -196,7 +196,7 @@ for(i in samples){
 ```
 
 Based on the initial QC results, it is apparent that the whole heart samples suffered from extensive cell death and contaminated droplets. 
-**We therefore focused on the *tcf21*-sorted samples from now on.**
+**We therefore focused on the *tcf21*-sorted samples.**
 
 ### Cell filtering
 
@@ -282,7 +282,7 @@ dev.off()
 
 ## calculate drop out rates ======================
 gns_dropouts <- scABC2::calc_dropouts_per_cellGroup(sce, rownames(sce), split_by = "Sample")
-##!save(gns_dropouts, file = "/scratchLocal/frd2007/2019_06_Jingli/data/gns_dropouts.rda")
+##!save(gns_dropouts, file = "2019_06_Jingli/data/gns_dropouts.rda")
 
 gns_dropouts$condition <- gsub("-.*","", gns_dropouts$Sample)
 
