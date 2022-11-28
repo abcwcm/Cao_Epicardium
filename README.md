@@ -41,7 +41,7 @@ Trajectory reconstruction methods typically need to achieve two key functions:
 
 We generally followed the instructions of the Trapnell Lab for applying the latest installment of the Monocle suite (<https://cole-trapnell-lab.github.io/monocle3/monocle3_docs/>). 
 In brief, we converted the read counts into a monocle object, and re-processed the data using `preprocess_cds()` with the number of dimensions set to 100.
-Cells were clustered with `cluster\_cells()`, which relies on Louvain community detection similar to Seurat, but using the UMAP dimensions.
+Cells were clustered with `cluster_cells()`, which relies on Louvain community detection similar to Seurat, but using the UMAP dimensions.
 To identify the trajectories of individual cells through the UMAP space, `learn_graph()` was used.
 To determine pseudotime values, root nodes were identified for each partition (as determined in the previous step) and pseudotime values were calculated based on each cell's projection on the principal graph.
 
@@ -61,6 +61,5 @@ visualisation of single-cell RNA-seq data in R." _Bioinformatics_, *33*, 1179-11
 * **scran**: L. Lun, A. T., Bach, K., & Marioni, J. C. (2016). Pooling across cells to normalize single-cell RNA sequencing data with many zero counts. Genome Biology, 17(1), 75. <https://doi.org/10.1186/s13059-016-0947-7>
 * **scTransform**: Hafemeister, C., & Satija, R. (2019). Normalization and variance stabilization of single-cell RNA-seq data using regularized negative binomial regression. Genome Biology, 20(1), 1–15. <https://doi.org/10.1186/s13059-019-1874-1>
 * **SC3** Kiselev, V. Y., Kirschner, K., Schaub, M. T., Andrews, T., Yiu, A., Chandra, T., … Hemberg, M. (2017). SC3: Consensus clustering of single-cell RNA-seq data. Nature Methods, 14(5), 483–486. <https://doi.org/10.1038/nmeth.4236Kiselev2017>
-* monocle3
 * **clusterProfiler**: Yu, G., Wang, L. G., Han, Y., & He, Q. Y. (2012). ClusterProfiler: An R package for comparing biological themes among gene clusters. OMICS A Journal of Integrative Biology, 5(16), 284–287. <https://doi.org/10.1089/omi.2011.0118>
 * **monocle3**: Doesn't have its own publication yet, but see [here](https://cole-trapnell-lab.github.io/monocle3/papers/) for manuscripts related to previous versions of monocle.
