@@ -40,7 +40,16 @@ devtools::load_all("monocle3")
 
 ## 3dpa, all cells
 
-<<<<<<< HEAD
+```{r monocle_prep_3dpa_allClusters, eval=FALSE}
+#screen -r jingli
+# conda acticate monocle
+# ~/miniconda3/envs/monocle/bin/R
+# cd /scratchLocal/frd2007/2019_06_Jingli/2019-08_Monocle
+devtools::load_all("monocle3/")
+```
+
+## 3dpa, all cells
+
 ```{r monocle_prep_3dpa_allClusters, eval=FALSE}
 #screen -r jingli
 # conda acticate monocle
@@ -48,14 +57,6 @@ devtools::load_all("monocle3")
 # cd /scratchLocal/frd2007/2019_06_Jingli/2019-08_Monocle
 devtools::load_all("monocle3/")
 load("/scratchLocal/frd2007/2019_06_Jingli/data/sce_CellGeneFilt_2019-06.rda")
-=======
-```{r monocle_prep_3dpa_epiClustersOnly, eval=FALSE}
-## ADD LOAD FROM BOX
-sce <- readRDS("sce_3dpa_ScTransform_ClustRemoved_2019-07.rds")
-cd <- colData(sce)[, c("Sample", "ori_barcodes", "cell_names", "condition", "clusters_d3.03", "res.01")]  
-rd <- rowData(sce)[, c("id","symbol")]
-rd$gene_short_name <- rd$symbol
->>>>>>> f2f179689558bedf050cd3f2ef4fece7b13ca035
 
 ## First, let's use all 3dpa cells (including those of non-Epi clusters)
 cts <- counts(sce.filt[, sce.filt$condition == "3dpa"])
@@ -115,7 +116,6 @@ plot_cells(cds, genes = c("top2a","tcf21","fn1a", "cd74a","fli1a","tpm1"), label
            cell_size = 1)
 dev.off()
 ```
-
 
 # Session info
 
