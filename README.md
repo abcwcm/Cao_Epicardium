@@ -18,6 +18,10 @@ For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were 
 
 For additional objects inlcuding the `SingleCellExperiment` objets that we generated from other publicly available scRNA-seq data, please get in touch with `abc at med.cornell.edu`, we're happy to share then with you via whatever route works best for you.
 
+## CUSTOM PLOTTING FUNCTIONS
+
+Most of the UMAPs were generated with internal functions for plotting, e.g. `scABC2::plot_reducedDims()`. These functions were originally based off of the plotting functions from the `scater` package, i.e. all plots can be reproduced with `scater`'s plotting functions, but we strongly recommend to rather check out the [`dittoSeq`](https://bioconductor.org/packages/release/bioc/html/dittoSeq.html) package instead. If you prefer to use our internal functions, do reach out, we're happy to share the two packages, scABC2 and ABCUtilities, but since they are unlikely to be maintained, those would be 'use at your own risk'.
+
 ## Filtering
 
 Following CellRanger's generation of read count matrices, cells were required to have a minimum of 10e2.5 genes and max. 5% mitochondrial reads.
