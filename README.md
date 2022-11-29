@@ -18,7 +18,8 @@ For that, the [tutorials of the Satija Lab](https://satijalab.org/seurat/) were 
 
 ## DATA AVAILABILITY
 
-* the `SingleCellExperiment` object named "sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds" in the scripts here, can be found [here](https://wcm.box.com/shared/static/uqv3zlp17txnb2548d7lvw43moka96yl.rds) -- caution, this is the direct link to the RDS file!
+* raw data (sequencing reads) and CellRanger output (matrices of read counts) can be downloaded from [**GEO: GSE202836**](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE202836)
+* the `SingleCellExperiment` object named "sce_CellGeneFiltWithScTransformBatchCorrect_2019-06.rds" in the scripts here, can be downloaded [here](https://wcm.box.com/shared/static/uqv3zlp17txnb2548d7lvw43moka96yl.rds) -- caution, this is the direct link to the RDS file! Only open in R! That file is the result of the QC and filtering steps described in the [corresponding .Rmd](https://github.com/abcwcm/Cao_Epicardium/blob/main/Rmd/01_QC_and_filtering.Rmd) file above
 
 For additional objects including the `SingleCellExperiment` objets that we generated from other publicly available scRNA-seq data, please get in touch with `abc at med.cornell.edu`, we're happy to share then with you via whatever route works best for you.
 
