@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7374559.svg)](https://doi.org/10.5281/zenodo.7374559)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7374559.svg)](https://doi.org/10.5281/zenodo.7374559)      [**GEO: GSE202836**](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE202836)
 
 # scRNA-seq of epicardial cells during zebrafish heart regeneration
 
