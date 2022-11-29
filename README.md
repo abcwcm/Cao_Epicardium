@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7374559.svg)](https://doi.org/10.5281/zenodo.7374559)
+
 # scRNA-seq of epicardial cells during zebrafish heart regeneration
 
 >Xia et al.: *Activation of a transient progenitor state in the epicardium is required for zebrafish heart regeneration*. Nat.Commun.
