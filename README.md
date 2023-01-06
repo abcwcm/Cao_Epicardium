@@ -2,7 +2,7 @@
 
 # scRNA-seq of epicardial cells during zebrafish heart regeneration
 
->Xia et al.: *Activation of a transient progenitor state in the epicardium is required for zebrafish heart regeneration*. Nat.Commun.
+>Xia et al.: *Activation of a transient progenitor state in the epicardium is required for zebrafish heart regeneration*. Nat.Commun. 2022 Dec 13;13(1):7704. doi: 10.1038/s41467-022-35433-9. PubMed PMID: 36513650; PubMed Central PMCID: PMC9747719. 
 
 The Applied Bioinformatics Core analyzed single-cell RNA sequencing data generated from epicardial cells of zebrafish models of cardiac injury.
 The main goal was to understand whether different sub-populations of epicardial cells contribute to specific aspects of myocardial regeneration.
